@@ -22,8 +22,13 @@ uploads/
 node_modules/
 dist/
 
+# Project management
+CLAUDE.md
+tasks/
+
 # IDE
 .vscode/
 .idea/
 *.sw?
 .DS_Store
+
