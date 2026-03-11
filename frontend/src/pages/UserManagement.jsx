@@ -115,7 +115,13 @@ export default function UserManagement() {
       title: "Registered",
       dataIndex: "created_at",
       key: "created_at",
-      render: (val) => new Date(val).toLocaleDateString(),
+      render: (val) =>
+        new Date(val).toLocaleDateString("en-US", {
+          timeZone: "America/New_York",
+          year: "numeric",
+          month: "2-digit",
+          day: "2-digit",
+        }),
     },
     {
       title: "Actions",
