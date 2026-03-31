@@ -25,10 +25,12 @@ import {
   InboxOutlined,
   UploadOutlined,
   DeleteOutlined,
+  CameraOutlined,
 } from "@ant-design/icons";
 import api from "../services/api";
 import { uploadSingle } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import CameraCapture from "../components/CameraCapture";
 
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
@@ -238,6 +240,9 @@ function SingleUpload() {
   const [breed, setBreed] = useState("");
   const [zipCode, setZipCode] = useState("");
 
+  // Camera
+  const [showCamera, setShowCamera] = useState(false);
+
   // Submission
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -351,7 +356,7 @@ function SingleUpload() {
             showUploadList={false}
             beforeUpload={(f) => {
               selectFile(f);
-              return false; // Prevent auto-upload
+              return false;
             }}
             style={{ marginBottom: 16 }}
           >
@@ -365,6 +370,42 @@ function SingleUpload() {
               Supported: JPG, PNG. Max 20MB.
             </p>
           </Dragger>
+
+          <div
+            onClick={() => setShowCamera(true)}
+            style={{
+              marginBottom: 16,
+              border: "1px dashed #d9d9d9",
+              borderRadius: 8,
+              padding: "20px 0",
+              textAlign: "center",
+              cursor: "pointer",
+              transition: "border-color 0.3s",
+              background: "#fafafa",
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#1677ff")}
+            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#d9d9d9")}
+          >
+            <p className="ant-upload-drag-icon">
+              <CameraOutlined />
+            </p>
+            <p className="ant-upload-text">
+              Tap to capture with camera
+            </p>
+            <p className="ant-upload-hint">
+              Use your device camera to take a photo
+            </p>
+          </div>
+
+          {showCamera && (
+            <CameraCapture
+              onCapture={(capturedFile) => {
+                setShowCamera(false);
+                selectFile(capturedFile);
+              }}
+              onClose={() => setShowCamera(false)}
+            />
+          )}
 
           {preview && (
             <div style={{ textAlign: "center", marginBottom: 16 }}>
