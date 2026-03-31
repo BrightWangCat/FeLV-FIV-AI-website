@@ -371,20 +371,12 @@ function SingleUpload() {
             </p>
           </Dragger>
 
-          <div
+          <Dragger
+            showUploadList={false}
+            beforeUpload={() => false}
+            openFileDialogOnClick={false}
             onClick={() => setShowCamera(true)}
-            style={{
-              marginBottom: 16,
-              border: "1px dashed #d9d9d9",
-              borderRadius: 8,
-              padding: "20px 0",
-              textAlign: "center",
-              cursor: "pointer",
-              transition: "border-color 0.3s",
-              background: "#fafafa",
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.borderColor = "#1677ff")}
-            onMouseLeave={(e) => (e.currentTarget.style.borderColor = "#d9d9d9")}
+            style={{ marginBottom: 16 }}
           >
             <p className="ant-upload-drag-icon">
               <CameraOutlined />
@@ -395,7 +387,7 @@ function SingleUpload() {
             <p className="ant-upload-hint">
               Use your device camera to take a photo
             </p>
-          </div>
+          </Dragger>
 
           {showCamera && (
             <CameraCapture

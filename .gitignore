@@ -32,3 +32,4 @@ tasks/
 *.sw?
 .DS_Store
 
+temp/
