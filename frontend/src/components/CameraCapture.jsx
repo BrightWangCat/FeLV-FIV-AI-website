@@ -1,14 +1,15 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import Webcam from "react-webcam";
 import { Button, Typography } from "antd";
 import { CloseOutlined } from "@ant-design/icons";
 
 const { Text } = Typography;
 
-// 引导框比例：宽:高 = 1:2（竖向试剂盒）
-const GUIDE_RATIO = 0.5;
+// 引导框比例：宽:高 = 2:1（横向试剂盒）
+const GUIDE_RATIO = 2;
 // 引导框占屏幕宽度的比例
-const GUIDE_WIDTH_PERCENT = 0.55;
+const GUIDE_WIDTH_PERCENT = 0.85;
 
 /**
  * 检测当前环境是否支持 getUserMedia（需要安全上下文）
@@ -22,34 +23,28 @@ function canUseGetUserMedia() {
 }
 
 /**
- * 全屏相机拍摄组件，带引导框叠加层。
- * 安全上下文（HTTPS/localhost）下使用实时摄像头 + 引导框；
- * 非安全上下文下降级为系统原生相机拍照 + 后置裁剪界面。
- *
- * @param {function} onCapture - 拍摄确认后回调，参数为裁剪后的 File 对象
- * @param {function} onClose - 关闭相机回调
+ * 全屏相机拍摄页面，带引导框叠加层。
+ * 作为独立路由 /camera 使用，不包裹 Layout。
+ * 拍摄确认后将图片数据存入 sessionStorage，导航回 /upload。
  */
-export default function CameraCapture({ onCapture, onClose }) {
+export default function CameraCapture() {
+  const navigate = useNavigate();
   const webcamRef = useRef(null);
   const [croppedPreview, setCroppedPreview] = useState(null);
   const [croppedBlob, setCroppedBlob] = useState(null);
   const [cameraError, setCameraError] = useState(null);
   const [useNativeCamera, setUseNativeCamera] = useState(false);
 
-  // 拍照后待裁剪的原图（降级模式用）
   const [nativeImage, setNativeImage] = useState(null);
-  const nativeCanvasRef = useRef(null);
 
   const isSecure = canUseGetUserMedia();
 
-  // 非安全上下文直接进入降级模式
   useEffect(() => {
     if (!isSecure) {
       setUseNativeCamera(true);
     }
   }, [isSecure]);
 
-  // 后置摄像头配置
   const videoConstraints = useMemo(
     () => ({
       facingMode: { ideal: "environment" },
@@ -58,6 +53,10 @@ export default function CameraCapture({ onCapture, onClose }) {
     }),
     []
   );
+
+  const handleClose = useCallback(() => {
+    navigate("/upload", { state: { mode: "single" } });
+  }, [navigate]);
 
   // 实时模式：拍照并裁剪到引导框区域
   const handleCapture = useCallback(() => {
@@ -126,7 +125,7 @@ export default function CameraCapture({ onCapture, onClose }) {
     );
   }, []);
 
-  // 降级模式：系统相机拍照后加载图片，展示裁剪界面
+  // 降级模式：系统相机拍照
   const handleNativeFile = useCallback((e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -134,7 +133,7 @@ export default function CameraCapture({ onCapture, onClose }) {
     setNativeImage(url);
   }, []);
 
-  // 降级模式：在裁剪界面上绘制带引导框的预览，用户确认区域后裁剪
+  // 降级模式：裁剪
   const handleNativeCrop = useCallback(() => {
     if (!nativeImage) return;
 
@@ -143,7 +142,6 @@ export default function CameraCapture({ onCapture, onClose }) {
       const iw = img.naturalWidth;
       const ih = img.naturalHeight;
 
-      // 计算引导框在原图中的位置（居中，按比例）
       const guideW = iw * GUIDE_WIDTH_PERCENT;
       const guideH = guideW / GUIDE_RATIO;
       const guideX = (iw - guideW) / 2;
@@ -178,14 +176,16 @@ export default function CameraCapture({ onCapture, onClose }) {
     img.src = nativeImage;
   }, [nativeImage]);
 
-  // 确认使用裁剪后的图片
+  // 确认：将图片存入 sessionStorage 并导航回 upload 页面
   const handleConfirm = useCallback(() => {
     if (!croppedBlob) return;
-    const file = new File([croppedBlob], `capture_${Date.now()}.jpg`, {
-      type: "image/jpeg",
-    });
-    onCapture(file);
-  }, [croppedBlob, onCapture]);
+    const reader = new FileReader();
+    reader.onload = () => {
+      sessionStorage.setItem("capturedImage", reader.result);
+      navigate("/upload", { state: { mode: "single", fromCamera: true } });
+    };
+    reader.readAsDataURL(croppedBlob);
+  }, [croppedBlob, navigate]);
 
   // 重新拍照
   const handleRetake = useCallback(() => {
@@ -196,17 +196,16 @@ export default function CameraCapture({ onCapture, onClose }) {
     setNativeImage(null);
   }, [croppedPreview, nativeImage]);
 
-  // getUserMedia 出错时的回调
   const handleWebcamError = useCallback((err) => {
     console.error("Camera error:", err);
     setCameraError(err?.message || "Camera access failed");
     setUseNativeCamera(true);
   }, []);
 
-  // 裁剪结果预览界面（两种模式共用）
+  // 裁剪结果预览界面
   if (croppedPreview) {
     return (
-      <div style={styles.overlay}>
+      <div style={styles.page}>
         <div style={styles.previewContainer}>
           <div style={styles.previewImageWrap}>
             <img src={croppedPreview} alt="Preview" style={styles.previewImage} />
@@ -229,20 +228,18 @@ export default function CameraCapture({ onCapture, onClose }) {
     );
   }
 
-  // 降级模式：系统相机拍照 + 后置裁剪
+  // 降级模式
   if (useNativeCamera) {
     return (
-      <div style={styles.overlay}>
-        {/* 关闭按钮 */}
+      <div style={styles.page}>
         <Button
           type="text"
           icon={<CloseOutlined style={{ fontSize: 22, color: "#fff" }} />}
-          onClick={onClose}
+          onClick={handleClose}
           style={styles.closeBtn}
         />
 
         {!nativeImage ? (
-          // 拍照入口
           <div style={styles.nativePromptContainer}>
             {cameraError && (
               <Text style={styles.nativeHint}>
@@ -271,14 +268,12 @@ export default function CameraCapture({ onCapture, onClose }) {
             </label>
           </div>
         ) : (
-          // 拍完照后：显示原图 + 引导框叠加，让用户确认裁剪区域
           <div style={styles.nativeCropContainer}>
             <Text style={styles.nativeCropHint}>
               The highlighted area will be cropped. Tap Confirm to continue.
             </Text>
             <div style={styles.nativeCropImageWrap}>
               <img src={nativeImage} alt="Captured" style={styles.nativeCropImage} />
-              {/* 引导框叠加在图片上 */}
               <div style={styles.nativeCropOverlay}>
                 <div style={styles.nativeCropGuideBox}>
                   <div style={{ ...styles.corner, ...styles.cornerTL }} />
@@ -307,9 +302,9 @@ export default function CameraCapture({ onCapture, onClose }) {
     );
   }
 
-  // 实时摄像头模式（HTTPS 环境）
+  // 实时摄像头模式
   return (
-    <div style={styles.overlay}>
+    <div style={styles.page}>
       <Webcam
         ref={webcamRef}
         audio={false}
@@ -319,7 +314,6 @@ export default function CameraCapture({ onCapture, onClose }) {
         style={styles.webcam}
       />
 
-      {/* 引导框遮罩层 */}
       <div style={styles.maskLayer}>
         <div style={styles.hintArea}>
           <Text style={styles.hintText}>
@@ -334,15 +328,13 @@ export default function CameraCapture({ onCapture, onClose }) {
         </div>
       </div>
 
-      {/* 关闭按钮 */}
       <Button
         type="text"
         icon={<CloseOutlined style={{ fontSize: 22, color: "#fff" }} />}
-        onClick={onClose}
+        onClick={handleClose}
         style={styles.closeBtn}
       />
 
-      {/* 拍照按钮 */}
       <div style={styles.captureArea}>
         <button onClick={handleCapture} style={styles.captureBtn} aria-label="Capture">
           <div style={styles.captureBtnInner} />
@@ -360,14 +352,13 @@ const CORNER_SIZE = 24;
 const CORNER_WEIGHT = 3;
 
 const styles = {
-  overlay: {
-    position: "fixed",
-    top: 0,
-    left: 0,
+  // 独立页面：占满整个视口，纯黑背景
+  page: {
     width: "100vw",
     height: "100vh",
-    zIndex: 9999,
     backgroundColor: "#000",
+    position: "relative",
+    overflow: "hidden",
   },
 
   webcam: {
@@ -464,7 +455,7 @@ const styles = {
 
   captureArea: {
     position: "absolute",
-    bottom: 40,
+    bottom: 100,
     left: 0,
     width: "100%",
     display: "flex",
@@ -492,7 +483,6 @@ const styles = {
     backgroundColor: "#fff",
   },
 
-  // 预览确认界面
   previewContainer: {
     width: "100%",
     height: "100%",
@@ -538,7 +528,6 @@ const styles = {
     minWidth: 120,
   },
 
-  // 降级模式：拍照入口
   nativePromptContainer: {
     width: "100%",
     height: "100%",
@@ -571,7 +560,6 @@ const styles = {
     justifyContent: "center",
   },
 
-  // 降级模式：拍完后裁剪界面
   nativeCropContainer: {
     width: "100%",
     height: "100%",
@@ -605,7 +593,6 @@ const styles = {
     objectFit: "contain",
   },
 
-  // 降级模式：叠加在图片上的引导框遮罩
   nativeCropOverlay: {
     position: "absolute",
     top: 0,

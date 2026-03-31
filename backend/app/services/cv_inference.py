@@ -55,7 +55,9 @@ REGION_X_END = 0.65
 
 # Minimum p99 score for the C line (control line). Must be above this
 # absolute threshold; below this the result is "Invalid".
-C_LINE_P99_THRESHOLD = 8.0
+# Set to 6.0 to accommodate slightly weak signals from poor lighting
+# or minor blur while still rejecting noise (typically 2-3).
+C_LINE_P99_THRESHOLD = 6.0
 
 # L/I lines use an adaptive p99 threshold based on the C line score.
 # Adapts to brightness: bright images have high C scores and

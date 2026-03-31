@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState, useCallback, useEffect } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   Typography,
   Card,
@@ -30,7 +30,6 @@ import {
 import api from "../services/api";
 import { uploadSingle } from "../services/api";
 import { useAuth } from "../context/AuthContext";
-import CameraCapture from "../components/CameraCapture";
 
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
@@ -223,25 +222,45 @@ function BatchUpload() {
 /* ------------------------------------------------------------------ */
 function SingleUpload() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { message } = App.useApp();
 
   // Step state
-  const [step, setStep] = useState(0); // 0-indexed for Steps component
+  const [step, setStep] = useState(0);
 
   // Step 1 - file
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
 
   // Step 2 - patient info
-  const [shareInfo, setShareInfo] = useState(null); // null = not chosen, true/false
+  const [shareInfo, setShareInfo] = useState(null);
   const [species, setSpecies] = useState("");
   const [age, setAge] = useState("");
   const [sex, setSex] = useState("");
   const [breed, setBreed] = useState("");
   const [zipCode, setZipCode] = useState("");
 
-  // Camera
-  const [showCamera, setShowCamera] = useState(false);
+  // 从相机页面返回时，读取 sessionStorage 中的拍摄图片
+  useEffect(() => {
+    if (location.state?.fromCamera) {
+      const dataUrl = sessionStorage.getItem("capturedImage");
+      if (dataUrl) {
+        sessionStorage.removeItem("capturedImage");
+        fetch(dataUrl)
+          .then((res) => res.blob())
+          .then((blob) => {
+            const capturedFile = new File([blob], `capture_${Date.now()}.jpg`, {
+              type: "image/jpeg",
+            });
+            setFile(capturedFile);
+            setPreview(URL.createObjectURL(capturedFile));
+            setStep(1);
+          });
+      }
+      // 清除 state 避免刷新时重复触发
+      window.history.replaceState({}, "");
+    }
+  }, [location.state]);
 
   // Submission
   const [uploading, setUploading] = useState(false);
@@ -371,33 +390,27 @@ function SingleUpload() {
             </p>
           </Dragger>
 
-          <Dragger
-            showUploadList={false}
-            beforeUpload={() => false}
-            openFileDialogOnClick={false}
-            onClick={() => setShowCamera(true)}
-            style={{ marginBottom: 16 }}
+          <div
+            onClick={() => navigate("/camera")}
+            style={{ position: "relative", marginBottom: 16, cursor: "pointer" }}
           >
-            <p className="ant-upload-drag-icon">
-              <CameraOutlined />
-            </p>
-            <p className="ant-upload-text">
-              Tap to capture with camera
-            </p>
-            <p className="ant-upload-hint">
-              Use your device camera to take a photo
-            </p>
-          </Dragger>
-
-          {showCamera && (
-            <CameraCapture
-              onCapture={(capturedFile) => {
-                setShowCamera(false);
-                selectFile(capturedFile);
-              }}
-              onClose={() => setShowCamera(false)}
-            />
-          )}
+            <Dragger
+              showUploadList={false}
+              beforeUpload={() => false}
+              openFileDialogOnClick={false}
+              style={{ pointerEvents: "none" }}
+            >
+              <p className="ant-upload-drag-icon">
+                <CameraOutlined />
+              </p>
+              <p className="ant-upload-text">
+                Tap to capture with camera
+              </p>
+              <p className="ant-upload-hint">
+                Use your device camera to take a photo
+              </p>
+            </Dragger>
+          </div>
 
           {preview && (
             <div style={{ textAlign: "center", marginBottom: 16 }}>
@@ -590,7 +603,10 @@ function SingleUpload() {
 /* ------------------------------------------------------------------ */
 export default function UploadPage() {
   const { user } = useAuth();
-  const [mode, setMode] = useState(null); // null | "single" | "batch"
+  const location = useLocation();
+  // 从 /camera 返回时自动进入 single 模式
+  const initialMode = location.state?.mode || null;
+  const [mode, setMode] = useState(initialMode);
 
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>

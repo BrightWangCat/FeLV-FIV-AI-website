@@ -1,11 +1,12 @@
 # FeLV/FIV LFA Reader
 
-**Online Access**: https://16.59.11.102:8080
+**Online Access**: https://16.59.11.102:8080 (self-signed certificate; accept the browser warning on first visit)
 
 A web application for automated reading and classification of **FeLV/FIV lateral flow assay (LFA)** test strips used in veterinary diagnostics. Upload photos of test cassettes and get computer-vision-based classification results.
 
 ## Features
 
+- **Camera capture with scan guide**: Mobile camera capture with a scan-frame overlay for cassette alignment. Auto-crops to the guide region. Falls back to system camera on non-HTTPS environments.
 - **OpenCV classification pipeline**: Local computer-vision pipeline using LAB color-space analysis and two-stage band detection. No external API calls required.
 - **Image preprocessing**: Automatic cassette detection, contour straightening, orientation correction, and contrast enhancement
 - **Batch processing**: Upload multiple test strip images at once with real-time progress tracking
@@ -20,7 +21,7 @@ A web application for automated reading and classification of **FeLV/FIV lateral
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | React 19, Vite 7, Ant Design 6, React Router 7 |
+| **Frontend** | React 19, Vite 7, Ant Design 6, React Router 7, react-webcam |
 | **Backend** | Python 3.12, FastAPI, SQLAlchemy, Uvicorn |
 | **CV** | OpenCV (headless) |
 | **Database** | SQLite |
@@ -55,7 +56,7 @@ lfa-reader/
 │   │   ├── main.jsx
 │   │   ├── services/api.js      # Axios API client
 │   │   ├── context/AuthContext.jsx
-│   │   ├── components/          # Navbar, Layout, ProtectedRoute
+│   │   ├── components/          # Navbar, Layout, ProtectedRoute, CameraCapture
 │   │   └── pages/               # Login, Register, Upload, Results, History, Stats, UserManagement
 │   ├── package.json
 │   └── vite.config.js

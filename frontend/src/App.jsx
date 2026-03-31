@@ -10,6 +10,7 @@ import Results from "./pages/Results";
 import History from "./pages/History";
 import Stats from "./pages/Stats";
 import UserManagement from "./pages/UserManagement";
+import CameraCapture from "./components/CameraCapture";
 
 // Theme tokens matching the existing color palette
 const themeConfig = {
@@ -72,6 +73,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Layout><UserManagement /></Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/camera"
+                element={
+                  <ProtectedRoute>
+                    <CameraCapture />
                   </ProtectedRoute>
                 }
               />

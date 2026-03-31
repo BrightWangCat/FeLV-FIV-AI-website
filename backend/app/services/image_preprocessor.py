@@ -53,6 +53,13 @@ BRIGHT_THRESHOLD_VALUES = [140, 160, 180, 200]
 # Contours larger than this are likely the entire background, not the cassette.
 MAX_CONTOUR_AREA_RATIO = 0.85
 
+# Minimum mean brightness inside a candidate contour's bounding rect.
+# The cassette body is white plastic (brightness typically 150-220).
+# Dark background regions (countertops, shadows) have much lower values.
+# This check prevents selecting a dark background rectangle as the cassette
+# when the image has a mixed dark/light background.
+MIN_INTERIOR_BRIGHTNESS = 100
+
 
 class PreprocessingError(Exception):
     """Raised when cassette detection or image preprocessing fails."""
@@ -122,17 +129,24 @@ def _find_best_rect_contour(
     contours: list,
     min_area: float,
     max_area: float,
+    gray: np.ndarray = None,
     current_best_area: float = 0,
 ) -> tuple:
     """Find the best rectangular contour matching cassette shape criteria.
 
     Filters contours by area range, polygon vertex count (4-8),
-    bounding-rect fill ratio (>0.7), and aspect ratio.
+    bounding-rect fill ratio (>0.7), aspect ratio, and interior brightness.
+    The interior brightness check rejects dark background regions that
+    pass all geometric criteria: a real cassette has a white plastic body
+    (high interior brightness), while a dark countertop region does not.
 
     Args:
         contours: List of contours from cv2.findContours.
         min_area: Minimum acceptable contour area.
         max_area: Maximum acceptable contour area.
+        gray: Grayscale image for interior brightness validation.
+            When provided, contours with mean interior brightness below
+            MIN_INTERIOR_BRIGHTNESS are rejected.
         current_best_area: Area of the current best candidate to beat.
 
     Returns:
@@ -165,6 +179,21 @@ def _find_best_rect_contour(
             if short_side > 0:
                 aspect = long_side / short_side
                 if MIN_ASPECT_RATIO <= aspect <= MAX_ASPECT_RATIO and area > found_area:
+                    # Interior brightness check: reject dark background regions.
+                    # The cassette body is white plastic with high brightness;
+                    # a dark countertop or shadow region has low brightness.
+                    if gray is not None:
+                        x, y, bw, bh = cv2.boundingRect(cnt)
+                        interior = gray[y:y + bh, x:x + bw]
+                        if interior.size > 0:
+                            interior_mean = float(np.mean(interior))
+                            if interior_mean < MIN_INTERIOR_BRIGHTNESS:
+                                logger.debug(
+                                    "Contour rejected: interior brightness "
+                                    "%.1f < %.1f (area=%.0f)",
+                                    interior_mean, MIN_INTERIOR_BRIGHTNESS, area,
+                                )
+                                continue
                     found_contour = cnt
                     found_area = area
 
@@ -222,7 +251,7 @@ def _detect_cassette_contour(img: np.ndarray) -> np.ndarray:
                 thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
             )
             candidate, candidate_area = _find_best_rect_contour(
-                contours, min_area, max_area, best_area
+                contours, min_area, max_area, gray, best_area
             )
             if candidate is not None:
                 best_contour = candidate
@@ -245,7 +274,7 @@ def _detect_cassette_contour(img: np.ndarray) -> np.ndarray:
             thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
         )
         candidate, candidate_area = _find_best_rect_contour(
-            contours, min_area, max_area, best_area
+            contours, min_area, max_area, gray, best_area
         )
         if candidate is not None:
             best_contour = candidate
@@ -268,7 +297,7 @@ def _detect_cassette_contour(img: np.ndarray) -> np.ndarray:
         thresh_adaptive, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
     )
     candidate, candidate_area = _find_best_rect_contour(
-        contours, min_area, max_area, best_area
+        contours, min_area, max_area, gray, best_area
     )
     if candidate is not None:
         best_contour = candidate

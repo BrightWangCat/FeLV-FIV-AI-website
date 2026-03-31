@@ -32,4 +32,4 @@ tasks/
 *.sw?
 .DS_Store
 
-temp/
+.PNG
