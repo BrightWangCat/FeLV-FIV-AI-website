@@ -32,6 +32,8 @@ from app.services.image_preprocessor import (
     _detect_cassette_contour,
     _straighten_and_crop,
     _correct_horizontal_direction,
+    _extract_reading_window,
+    preprocess_cassette,
     PreprocessingError,
 )
 
@@ -40,14 +42,6 @@ logger = logging.getLogger(__name__)
 VALID_CATEGORIES = {
     "Negative", "Positive L", "Positive I", "Positive L+I", "Invalid",
 }
-
-# ---- Analysis region crop (relative to cassette image) ----
-# Broad region covering the strip opening plus some margin.
-# The peak detection algorithm handles precise band localization within this.
-REGION_Y_START = 0.55
-REGION_Y_END = 0.82
-REGION_X_START = 0.25
-REGION_X_END = 0.65
 
 # ---- Band detection parameters ----
 # Two-stage detection: zone-based p99 for sensitivity, then column
@@ -84,13 +78,26 @@ COLUMN_SMOOTH_KERNEL = 11
 # If the ratio is below this, only the stronger zone is kept.
 DUAL_BAND_MIN_RATIO = 0.7
 
-# Expected relative positions of bands within the analysis region
-# (as fraction of region width, after skipping the left 20%).
-# Used to assign peaks to C/L/I when fewer than 3 peaks are found.
-# C is typically at 45-50%, L at 55-62%, I at 70-76%.
-C_POSITION_RANGE = (0.30, 0.55)
-L_POSITION_RANGE = (0.55, 0.68)
-I_POSITION_RANGE = (0.68, 0.85)
+# ---- Dynamic zone positioning ----
+# Instead of fixed zone positions, zones are computed relative to the
+# detected C band position. This adapts to variations in cassette
+# cropping and strip position within the reading window.
+
+# Search range for the C band within the strip (fraction of strip width).
+# Excludes the leftmost 15% (FIV label artifact area) and rightmost 45%.
+C_SEARCH_START = 0.15
+C_SEARCH_END = 0.55
+
+# Band spacing: offset from C band position (fraction of strip width).
+# Derived from empirical measurement across multiple cassette images.
+# The physical spacing between bands is fixed by manufacturing.
+L_OFFSET_FROM_C = 0.135
+I_OFFSET_FROM_C = 0.27
+
+# Half-width of each detection zone (fraction of strip width).
+# Wide enough to capture the full band signal while minimizing
+# cross-zone overlap.
+BAND_ZONE_HALF_WIDTH = 0.07
 
 # Active classification tasks keyed by batch_id.
 _active_tasks: dict[int, dict] = {}
@@ -127,50 +134,46 @@ def _preprocess_for_cv(file_path: str) -> np.ndarray:
     return cropped
 
 
-def _extract_analysis_region(cassette: np.ndarray) -> np.ndarray:
-    """Crop the analysis region from the cassette image.
+def _extract_strip_region(cassette: np.ndarray) -> np.ndarray:
+    """Extract the test strip region from the cassette image.
 
-    Uses a fixed-ratio crop covering the strip opening area. The
-    two-stage band detection algorithm (p99 + prominence) handles
-    precise band localization within this region.
+    Uses the reading window detection to find the strip opening area,
+    then crops to the lower portion containing the actual test bands.
+    This approach adapts to variations in cassette cropping, unlike
+    a fixed-ratio crop of the full cassette.
 
     Args:
         cassette: Landscape-oriented cassette image (BGR).
 
     Returns:
-        Cropped analysis region (BGR).
+        Cropped strip region (BGR) containing the band area.
     """
-    h, w = cassette.shape[:2]
-    y1 = int(h * REGION_Y_START)
-    y2 = int(h * REGION_Y_END)
-    x1 = int(w * REGION_X_START)
-    x2 = int(w * REGION_X_END)
-    region = cassette[y1:y2, x1:x2]
+    window = _extract_reading_window(cassette)
+    wh = window.shape[0]
+    # The lower 45% of the reading window contains the test strip bands.
+    # The upper portion has printed text labels (C, L, I) and cassette surface.
+    strip = window[int(wh * 0.55):, :]
 
-    if region.size == 0:
-        raise PreprocessingError("Analysis region extraction resulted in empty image")
+    if strip.size == 0:
+        raise PreprocessingError("Strip region extraction resulted in empty image")
 
-    return region
+    return strip
 
 
-def detect_bands(region_bgr: np.ndarray) -> dict:
-    """Detect colored bands using two-stage analysis on the LAB a-channel.
+def detect_bands(strip_bgr: np.ndarray) -> dict:
+    """Detect colored bands using C-anchored dynamic zone positioning.
 
-    Stage 1 (sensitivity): Zone-based p99 scoring.
-      Divides the analysis region into C/L/I zones and computes each
-      zone's 99th percentile a-channel value minus the background
-      median. Catches both strong and moderately weak bands.
+    First locates the C (control) band by finding the strongest a-channel
+    peak in the search range. Then positions L and I zones at fixed offsets
+    from C, matching the physical band spacing on the test strip.
 
-    Stage 2 (specificity): Column profile prominence validation.
-      Computes the column-wise mean a-channel profile, smooths it,
-      and checks that each candidate zone has a local peak with
-      sufficient prominence. This eliminates cross-zone spillover:
-      a strong C band can elevate the p99 in the adjacent L zone,
-      but it will NOT produce a prominent local peak in L's column
-      profile.
+    Within each zone, applies two-stage detection:
+      Stage 1 (sensitivity): p99 scoring on the a-channel.
+      Stage 2 (specificity): column profile prominence validation.
 
     Args:
-        region_bgr: BGR image of the analysis region.
+        strip_bgr: BGR image of the strip region (lower portion of the
+            reading window, containing the visible test bands).
 
     Returns:
         Dict with keys:
@@ -179,22 +182,58 @@ def detect_bands(region_bgr: np.ndarray) -> dict:
           "prominences": {"c", "l", "i"}: float column profile prominences
           "background_a": float, the median a-channel value
           "thresholds": {"c", "l", "i"}: float, p99 thresholds used
+          "zones": {"c", "l", "i"}: (start, end) zone boundaries used
     """
-    lab = cv2.cvtColor(region_bgr, cv2.COLOR_BGR2LAB)
+    lab = cv2.cvtColor(strip_bgr, cv2.COLOR_BGR2LAB)
     a_channel = lab[:, :, 1].astype(np.float32)
     _, rw = a_channel.shape
     background_a = float(np.median(a_channel))
 
-    # Stage 1: Zone p99 scoring
-    zone_slices = {
-        "c": a_channel[:, int(rw * C_POSITION_RANGE[0]):int(rw * C_POSITION_RANGE[1])],
-        "l": a_channel[:, int(rw * L_POSITION_RANGE[0]):int(rw * L_POSITION_RANGE[1])],
-        "i": a_channel[:, int(rw * I_POSITION_RANGE[0]):int(rw * I_POSITION_RANGE[1])],
+    # Compute smoothed column profile for C band localization
+    col_profile = np.mean(a_channel, axis=0)
+    col_smooth = cv2.GaussianBlur(
+        col_profile.reshape(1, -1),
+        (1, COLUMN_SMOOTH_KERNEL),
+        0,
+    ).flatten()
+
+    # Locate C band: find the column with peak a-channel value
+    # within the search range, excluding edge artifacts from FIV label
+    search_x1 = int(rw * C_SEARCH_START)
+    search_x2 = int(rw * C_SEARCH_END)
+    search_region = col_smooth[search_x1:search_x2]
+    c_peak_local = int(np.argmax(search_region))
+    c_peak_col = search_x1 + c_peak_local
+    c_pos = c_peak_col / rw
+
+    logger.debug(
+        "C band located at col %d (%.3f of strip width)",
+        c_peak_col, c_pos,
+    )
+
+    # Compute dynamic zone boundaries based on C band position
+    hw = BAND_ZONE_HALF_WIDTH
+    zone_ranges = {
+        "c": (max(c_pos - hw, 0.0), min(c_pos + hw, 1.0)),
+        "l": (max(c_pos + L_OFFSET_FROM_C - hw, 0.0),
+              min(c_pos + L_OFFSET_FROM_C + hw, 1.0)),
+        "i": (max(c_pos + I_OFFSET_FROM_C - hw, 0.0),
+              min(c_pos + I_OFFSET_FROM_C + hw, 1.0)),
     }
+
+    # Stage 1: Zone p99 scoring
+    zone_slices = {}
+    for name, (start, end) in zone_ranges.items():
+        zone_slices[name] = a_channel[:, int(rw * start):int(rw * end)]
 
     p99_scores = {}
     for name, zone in zone_slices.items():
-        p99_scores[name] = round(float(np.percentile(zone, 99)) - background_a, 2)
+        if zone.size == 0:
+            p99_scores[name] = 0.0
+        else:
+            p99_scores[name] = round(
+                float(np.percentile(zone, 99)) - background_a, 2
+            )
 
     # Adaptive thresholds
     c_score = p99_scores["c"]
@@ -210,13 +249,6 @@ def detect_bands(region_bgr: np.ndarray) -> dict:
     i_pass_p99 = p99_scores["i"] >= thresholds["i"]
 
     # Stage 2: Column profile prominence validation
-    col_profile = np.mean(a_channel, axis=0)
-    col_smooth = cv2.GaussianBlur(
-        col_profile.reshape(1, -1),
-        (1, COLUMN_SMOOTH_KERNEL),
-        0,
-    ).flatten()
-
     def _zone_prominence(start_frac, end_frac):
         """Compute the local peak prominence within a zone.
 
@@ -233,9 +265,9 @@ def detect_bands(region_bgr: np.ndarray) -> dict:
         return float(np.max(zone_profile)) - edge_min
 
     prominences = {
-        "c": round(_zone_prominence(*C_POSITION_RANGE), 2),
-        "l": round(_zone_prominence(*L_POSITION_RANGE), 2),
-        "i": round(_zone_prominence(*I_POSITION_RANGE), 2),
+        "c": round(_zone_prominence(*zone_ranges["c"]), 2),
+        "l": round(_zone_prominence(*zone_ranges["l"]), 2),
+        "i": round(_zone_prominence(*zone_ranges["i"]), 2),
     }
 
     # A zone is detected only if it passes BOTH p99 threshold AND
@@ -254,7 +286,6 @@ def detect_bands(region_bgr: np.ndarray) -> dict:
         stronger = max(l_prom, i_prom)
         weaker = min(l_prom, i_prom)
         if stronger > 0 and weaker / stronger < DUAL_BAND_MIN_RATIO:
-            # Keep only the zone with the stronger prominence
             if l_prom > i_prom:
                 i_detected = False
             else:
@@ -274,12 +305,16 @@ def detect_bands(region_bgr: np.ndarray) -> dict:
         "prominences": prominences,
         "background_a": background_a,
         "thresholds": thresholds,
+        "zones": zone_ranges,
     }
 
     for name in ("c", "l", "i"):
+        zr = zone_ranges[name]
         logger.debug(
-            "Zone %s: p99=%.2f (thr=%.2f), prom=%.2f (thr=%.2f), band=%s",
-            name.upper(), p99_scores[name], thresholds[name],
+            "Zone %s [%.3f-%.3f]: p99=%.2f (thr=%.2f), "
+            "prom=%.2f (thr=%.2f), band=%s",
+            name.upper(), zr[0], zr[1],
+            p99_scores[name], thresholds[name],
             prominences[name], PROMINENCE_THRESHOLD, results[name],
         )
 
@@ -344,8 +379,8 @@ def classify_single_image(file_path: str) -> tuple[str, str]:
         (category, confidence) tuple.
     """
     cassette = _preprocess_for_cv(file_path)
-    region = _extract_analysis_region(cassette)
-    bands = detect_bands(region)
+    strip = _extract_strip_region(cassette)
+    bands = detect_bands(strip)
     return classify_from_bands(bands)
 
 
@@ -388,7 +423,6 @@ def classify_batch(batch_id: int, db_factory) -> None:
 
             print(f"[CV] [{idx}/{total}] Processing: {img.original_filename}")
 
-            # Use the original image (not the LLM-preprocessed version)
             if not os.path.exists(img.file_path):
                 print(f"[CV] [{idx}/{total}] File not found: {img.file_path}")
                 img.cv_result = "Invalid"
@@ -396,13 +430,27 @@ def classify_batch(batch_id: int, db_factory) -> None:
                 db.commit()
                 continue
 
+            # Re-run preprocessing to regenerate the display thumbnail.
+            # This ensures the preprocessed image reflects the latest
+            # detection algorithm, not just the version at upload time.
+            if img.preprocessed_path:
+                try:
+                    preprocess_cassette(img.file_path, img.preprocessed_path)
+                    img.is_preprocessed = True
+                    print(f"[CV] [{idx}/{total}] Preprocessed: OK")
+                except PreprocessingError as e:
+                    print(f"[CV] [{idx}/{total}] Preprocess warning: {e}")
+                except Exception as e:
+                    print(f"[CV] [{idx}/{total}] Preprocess warning: {e}")
+
+            # Run CV classification on the original image
             try:
                 category, confidence = classify_single_image(img.file_path)
                 img.cv_result = category
                 img.cv_confidence = confidence
                 print(f"[CV] [{idx}/{total}] Result: {category} ({confidence})")
             except PreprocessingError as e:
-                print(f"[CV] [{idx}/{total}] Preprocessing failed: {e}")
+                print(f"[CV] [{idx}/{total}] Classification failed: {e}")
                 img.cv_result = "Invalid"
                 img.cv_confidence = "low"
             except Exception as e:
