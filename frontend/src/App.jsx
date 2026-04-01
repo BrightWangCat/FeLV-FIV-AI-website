@@ -10,6 +10,7 @@ import Results from "./pages/Results";
 import History from "./pages/History";
 import Stats from "./pages/Stats";
 import UserManagement from "./pages/UserManagement";
+import Statistics from "./pages/Statistics";
 import CameraCapture from "./components/CameraCapture";
 
 // Theme tokens matching the existing color palette
@@ -65,6 +66,14 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Layout><Stats /></Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/analytics"
+                element={
+                  <ProtectedRoute>
+                    <Layout><Statistics /></Layout>
                   </ProtectedRoute>
                 }
               />

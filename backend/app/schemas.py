@@ -78,8 +78,8 @@ class PatientInfoCreate(BaseModel):
         if v is not None:
             if v == "":
                 raise ValueError("age cannot be an empty string")
-            if len(v) > 50:
-                raise ValueError("age must be 50 characters or fewer")
+            if not v.isdigit():
+                raise ValueError("age must be a number (in years)")
         return v
 
 

@@ -487,11 +487,14 @@ function SingleUpload() {
                   allowClear
                 />
               </Form.Item>
-              <Form.Item label="Age">
+              <Form.Item label="Age (years)">
                 <Input
+                  type="number"
+                  min={0}
                   value={age}
-                  onChange={(e) => setAge(e.target.value)}
-                  placeholder="e.g. 3 years, 6 months"
+                  onChange={(e) => setAge(e.target.value.replace(/[^0-9]/g, ""))}
+                  placeholder="e.g. 3"
+                  suffix="years"
                 />
               </Form.Item>
               <Form.Item label="Sex">

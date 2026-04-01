@@ -4,6 +4,7 @@ import { Layout, Menu, Dropdown, Typography, Grid, Button, Drawer } from "antd";
 import {
   PlusCircleOutlined,
   HistoryOutlined,
+  BarChartOutlined,
   UserOutlined,
   LogoutOutlined,
   TeamOutlined,
@@ -21,6 +22,7 @@ const pathToKey = {
   "/history": "history",
   "/results": "results",
   "/stats": "stats",
+  "/analytics": "analytics",
   "/users": "users",
 };
 
@@ -53,6 +55,11 @@ export default function Navbar() {
       key: "history",
       icon: <HistoryOutlined />,
       label: <Link to="/history" onClick={() => setDrawerOpen(false)}>Results</Link>,
+    },
+    {
+      key: "analytics",
+      icon: <BarChartOutlined />,
+      label: <Link to="/analytics" onClick={() => setDrawerOpen(false)}>Statistics</Link>,
     },
     ...(user.role === "admin"
       ? [
