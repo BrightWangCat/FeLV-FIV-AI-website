@@ -1,0 +1,531 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		AA000001 /* LFAReaderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100001 /* LFAReaderApp.swift */; };
+		AA000002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100002 /* ContentView.swift */; };
+		AA000003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA100003 /* Assets.xcassets */; };
+		AA000004 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = AA100004 /* Preview Assets.xcassets */; };
+		AA000005 /* NewTestView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100005 /* NewTestView.swift */; };
+		AA000006 /* ResultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100006 /* ResultsView.swift */; };
+		AA000007 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100007 /* SettingsView.swift */; };
+		AA000008 /* NewTestViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100008 /* NewTestViewModel.swift */; };
+		AA000009 /* ResultsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100009 /* ResultsViewModel.swift */; };
+		AA000010 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100010 /* SettingsViewModel.swift */; };
+		AA000011 /* TestResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100011 /* TestResult.swift */; };
+		AA000012 /* User.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100012 /* User.swift */; };
+		AA000013 /* APIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100013 /* APIClient.swift */; };
+		AA000014 /* AuthViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100014 /* AuthViewModel.swift */; };
+		AA000015 /* LoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100015 /* LoginView.swift */; };
+		AA000016 /* RegisterView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100016 /* RegisterView.swift */; };
+		AA000017 /* UploadResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100017 /* UploadResponse.swift */; };
+		AA000018 /* CameraService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100018 /* CameraService.swift */; };
+		AA000019 /* CameraPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100019 /* CameraPreviewView.swift */; };
+		AA000020 /* CameraCaptureView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100020 /* CameraCaptureView.swift */; };
+		AA000021 /* PhotoPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100021 /* PhotoPickerView.swift */; };
+		AA000022 /* PatientInfoFormView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100022 /* PatientInfoFormView.swift */; };
+		AA000023 /* UploadProgressView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100023 /* UploadProgressView.swift */; };
+		AA000024 /* ClassificationResponse.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100024 /* ClassificationResponse.swift */; };
+		AA000025 /* ImageCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100025 /* ImageCache.swift */; };
+		AA000026 /* DateFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100026 /* DateFormatting.swift */; };
+		AA000028 /* ImageDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100028 /* ImageDetailViewModel.swift */; };
+
+		AA000033 /* ImageDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100033 /* ImageDetailView.swift */; };
+		AA000034 /* GlobalStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100034 /* GlobalStats.swift */; };
+		AA000035 /* StatisticsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100035 /* StatisticsViewModel.swift */; };
+		AA000036 /* StatisticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100036 /* StatisticsView.swift */; };
+		AA000037 /* ZipCodeMapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100037 /* ZipCodeMapView.swift */; };
+		AA000038 /* columbus_zips.json in Resources */ = {isa = PBXBuildFile; fileRef = AA100038 /* columbus_zips.json */; };
+		AA000039 /* KeychainService.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA100039 /* KeychainService.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		AA100001 /* LFAReaderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LFAReaderApp.swift; sourceTree = "<group>"; };
+		AA100002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		AA100003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AA100004 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
+		AA100005 /* NewTestView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewTestView.swift; sourceTree = "<group>"; };
+		AA100006 /* ResultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultsView.swift; sourceTree = "<group>"; };
+		AA100007 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		AA100008 /* NewTestViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NewTestViewModel.swift; sourceTree = "<group>"; };
+		AA100009 /* ResultsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultsViewModel.swift; sourceTree = "<group>"; };
+		AA100010 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		AA100011 /* TestResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestResult.swift; sourceTree = "<group>"; };
+		AA100012 /* User.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = User.swift; sourceTree = "<group>"; };
+		AA100013 /* APIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = APIClient.swift; sourceTree = "<group>"; };
+		AA100014 /* AuthViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthViewModel.swift; sourceTree = "<group>"; };
+		AA100015 /* LoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginView.swift; sourceTree = "<group>"; };
+		AA100016 /* RegisterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RegisterView.swift; sourceTree = "<group>"; };
+		AA100017 /* UploadResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadResponse.swift; sourceTree = "<group>"; };
+		AA100018 /* CameraService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraService.swift; sourceTree = "<group>"; };
+		AA100019 /* CameraPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraPreviewView.swift; sourceTree = "<group>"; };
+		AA100020 /* CameraCaptureView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CameraCaptureView.swift; sourceTree = "<group>"; };
+		AA100021 /* PhotoPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoPickerView.swift; sourceTree = "<group>"; };
+		AA100022 /* PatientInfoFormView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatientInfoFormView.swift; sourceTree = "<group>"; };
+		AA100023 /* UploadProgressView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadProgressView.swift; sourceTree = "<group>"; };
+		AA100024 /* ClassificationResponse.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClassificationResponse.swift; sourceTree = "<group>"; };
+		AA100025 /* ImageCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageCache.swift; sourceTree = "<group>"; };
+		AA100026 /* DateFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DateFormatting.swift; sourceTree = "<group>"; };
+		AA100028 /* ImageDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDetailViewModel.swift; sourceTree = "<group>"; };
+
+		AA100033 /* ImageDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDetailView.swift; sourceTree = "<group>"; };
+		AA100034 /* GlobalStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GlobalStats.swift; sourceTree = "<group>"; };
+		AA100035 /* StatisticsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsViewModel.swift; sourceTree = "<group>"; };
+		AA100036 /* StatisticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatisticsView.swift; sourceTree = "<group>"; };
+		AA100037 /* ZipCodeMapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZipCodeMapView.swift; sourceTree = "<group>"; };
+		AA100038 /* columbus_zips.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = columbus_zips.json; sourceTree = "<group>"; };
+		AA100039 /* KeychainService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainService.swift; sourceTree = "<group>"; };
+		AA200001 /* LFAReader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LFAReader.app; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		AA300001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		AA400001 = {
+			isa = PBXGroup;
+			children = (
+				AA400002 /* LFAReader */,
+				AA400006 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		AA400002 /* LFAReader */ = {
+			isa = PBXGroup;
+			children = (
+				AA100001 /* LFAReaderApp.swift */,
+				AA100002 /* ContentView.swift */,
+				AA400003 /* Views */,
+				AA400004 /* ViewModels */,
+				AA400005 /* Models */,
+				AA400007 /* Services */,
+				AA400009 /* Extensions */,
+				AA400010 /* Resources */,
+				AA100003 /* Assets.xcassets */,
+				AA400008 /* Preview Content */,
+			);
+			path = LFAReader;
+			sourceTree = "<group>";
+		};
+		AA400003 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				AA100005 /* NewTestView.swift */,
+				AA100006 /* ResultsView.swift */,
+				AA100007 /* SettingsView.swift */,
+				AA100015 /* LoginView.swift */,
+				AA100016 /* RegisterView.swift */,
+				AA100019 /* CameraPreviewView.swift */,
+				AA100020 /* CameraCaptureView.swift */,
+				AA100021 /* PhotoPickerView.swift */,
+				AA100022 /* PatientInfoFormView.swift */,
+				AA100023 /* UploadProgressView.swift */,
+				AA100033 /* ImageDetailView.swift */,
+				AA100036 /* StatisticsView.swift */,
+				AA100037 /* ZipCodeMapView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		AA400004 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				AA100008 /* NewTestViewModel.swift */,
+				AA100009 /* ResultsViewModel.swift */,
+				AA100010 /* SettingsViewModel.swift */,
+				AA100014 /* AuthViewModel.swift */,
+				AA100028 /* ImageDetailViewModel.swift */,
+				AA100035 /* StatisticsViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		AA400005 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				AA100011 /* TestResult.swift */,
+				AA100012 /* User.swift */,
+				AA100017 /* UploadResponse.swift */,
+				AA100024 /* ClassificationResponse.swift */,
+				AA100034 /* GlobalStats.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		AA400006 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AA200001 /* LFAReader.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		AA400007 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				AA100013 /* APIClient.swift */,
+				AA100018 /* CameraService.swift */,
+				AA100025 /* ImageCache.swift */,
+				AA100039 /* KeychainService.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		AA400008 /* Preview Content */ = {
+			isa = PBXGroup;
+			children = (
+				AA100004 /* Preview Assets.xcassets */,
+			);
+			path = "Preview Content";
+			sourceTree = "<group>";
+		};
+		AA400009 /* Extensions */ = {
+			isa = PBXGroup;
+			children = (
+				AA100026 /* DateFormatting.swift */,
+			);
+			path = Extensions;
+			sourceTree = "<group>";
+		};
+		AA400010 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				AA100038 /* columbus_zips.json */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		AA500001 /* LFAReader */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA700002 /* Build configuration list for PBXNativeTarget "LFAReader" */;
+			buildPhases = (
+				AA600001 /* Sources */,
+				AA300001 /* Frameworks */,
+				AA600002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = LFAReader;
+			productName = LFAReader;
+			productReference = AA200001 /* LFAReader.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		AA800001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					AA500001 = {
+						CreatedOnToolsVersion = 16.0;
+					};
+				};
+			};
+			buildConfigurationList = AA700001 /* Build configuration list for PBXProject "LFAReader" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = AA400001;
+			productRefGroup = AA400006 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				AA500001 /* LFAReader */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		AA600002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA000004 /* Preview Assets.xcassets in Resources */,
+				AA000038 /* columbus_zips.json in Resources */,
+				AA000003 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		AA600001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA000001 /* LFAReaderApp.swift in Sources */,
+				AA000002 /* ContentView.swift in Sources */,
+				AA000005 /* NewTestView.swift in Sources */,
+				AA000006 /* ResultsView.swift in Sources */,
+				AA000007 /* SettingsView.swift in Sources */,
+				AA000008 /* NewTestViewModel.swift in Sources */,
+				AA000009 /* ResultsViewModel.swift in Sources */,
+				AA000010 /* SettingsViewModel.swift in Sources */,
+				AA000011 /* TestResult.swift in Sources */,
+				AA000012 /* User.swift in Sources */,
+				AA000013 /* APIClient.swift in Sources */,
+				AA000014 /* AuthViewModel.swift in Sources */,
+				AA000015 /* LoginView.swift in Sources */,
+				AA000016 /* RegisterView.swift in Sources */,
+				AA000017 /* UploadResponse.swift in Sources */,
+				AA000018 /* CameraService.swift in Sources */,
+				AA000019 /* CameraPreviewView.swift in Sources */,
+				AA000020 /* CameraCaptureView.swift in Sources */,
+				AA000021 /* PhotoPickerView.swift in Sources */,
+				AA000022 /* PatientInfoFormView.swift in Sources */,
+				AA000023 /* UploadProgressView.swift in Sources */,
+				AA000024 /* ClassificationResponse.swift in Sources */,
+				AA000025 /* ImageCache.swift in Sources */,
+				AA000026 /* DateFormatting.swift in Sources */,
+				AA000028 /* ImageDetailViewModel.swift in Sources */,
+				AA000033 /* ImageDetailView.swift in Sources */,
+				AA000034 /* GlobalStats.swift in Sources */,
+				AA000035 /* StatisticsViewModel.swift in Sources */,
+				AA000036 /* StatisticsView.swift in Sources */,
+				AA000037 /* ZipCodeMapView.swift in Sources */,
+				AA000039 /* KeychainService.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		AA900001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		AA900002 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		AA900003 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"LFAReader/Preview Content\"";
+				DEVELOPMENT_TEAM = 2Y2YCG6Z32;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LFAReader/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "LFA Reader";
+				INFOPLIST_KEY_NSCameraUsageDescription = "LFA Reader needs camera access to capture lateral flow assay images for analysis.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lfareader.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		AA900004 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "\"LFAReader/Preview Content\"";
+				DEVELOPMENT_TEAM = 2Y2YCG6Z32;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = LFAReader/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "LFA Reader";
+				INFOPLIST_KEY_NSCameraUsageDescription = "LFA Reader needs camera access to capture lateral flow assay images for analysis.";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.lfareader.app;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		AA700001 /* Build configuration list for PBXProject "LFAReader" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA900001 /* Debug */,
+				AA900002 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA700002 /* Build configuration list for PBXNativeTarget "LFAReader" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA900003 /* Debug */,
+				AA900004 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = AA800001 /* Project object */;
+}

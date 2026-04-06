@@ -32,4 +32,14 @@ tasks/
 *.sw?
 .DS_Store
 
+# iOS / Xcode
+*.xcuserdata
+xcuserdata/
+DerivedData/
+*.xcworkspace/xcshareddata/IDEWorkspaceChecks.plist
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
 *.png
