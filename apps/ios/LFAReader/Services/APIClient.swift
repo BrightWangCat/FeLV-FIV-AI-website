@@ -262,7 +262,7 @@ actor APIClient {
     /// Download image data for a given image ID.
     func fetchImageData(imageId: Int, original: Bool = false) async throws -> Data {
         let query = original ? "?original=true" : ""
-        return try await rawDataRequest("GET", path: "/upload/image/\(imageId)\(query)")
+        return try await rawDataRequest("GET", path: "/upload/image/\(imageId)/file\(query)")
     }
 
     // MARK: - Raw data request helper

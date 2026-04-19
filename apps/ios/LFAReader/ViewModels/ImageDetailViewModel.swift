@@ -63,6 +63,8 @@ class ImageDetailViewModel {
     @MainActor
     func loadImage(original: Bool = false) async {
         isLoadingImage = true
+        detailError = nil
+        loadedImage = nil
 
         if let cached = await ImageCache.shared.image(for: imageId, original: original) {
             loadedImage = cached
@@ -75,6 +77,8 @@ class ImageDetailViewModel {
             if let image = UIImage(data: data) {
                 await ImageCache.shared.store(image, for: imageId, original: original)
                 loadedImage = image
+            } else {
+                detailError = "Failed to decode image data"
             }
         } catch {
             detailError = error.localizedDescription
