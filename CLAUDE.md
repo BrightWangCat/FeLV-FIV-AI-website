@@ -64,6 +64,6 @@ lfa-reader/
 - Xcode 工程文件 `apps/ios/LFAReader.xcodeproj/project.pbxproj` 的资源引用、Build Phase、Target 配置必须在 Xcode GUI 中改,严禁手工编辑 pbxproj。
 
 ### Git 提交
-- 完成主要功能后立即提交。
+- 完成主要功能后立即 `git add` 并 `git commit`,commit message 由 Claude 撰写,简洁聚焦"为什么"。
+- **严禁自己执行 `git push` / `git push --force`**。推送到远程一律由用户亲自完成。
 - 提交前确认 `.gitignore` 已排除敏感文件:数据库、.env、上传目录、凭证。
-- commit message 简洁,聚焦"为什么"。
