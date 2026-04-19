@@ -44,25 +44,28 @@ const PIE_PALETTE = [
   "#4fd1c5", "#fc8181", "#90cdf4", "#fbd38d", "#c6f6d5",
 ];
 
-const ALL_DISEASES = "__all__";
-
 export default function Statistics() {
   const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [filter, setFilter] = useState(ALL_DISEASES);
+  const [selectedDisease, setSelectedDisease] = useState();
 
   useEffect(() => {
-    fetchGlobalStats(filter);
-  }, [filter]);
+    if (!selectedDisease) {
+      setData(null);
+      setError("");
+      setLoading(false);
+      return;
+    }
+
+    fetchGlobalStats(selectedDisease);
+  }, [selectedDisease]);
 
   const fetchGlobalStats = async (diseaseFilter) => {
     setLoading(true);
+    setError("");
     try {
-      const params = {};
-      if (diseaseFilter !== ALL_DISEASES) {
-        params.disease_category = diseaseFilter;
-      }
+      const params = { disease_category: diseaseFilter };
       const res = await api.get("/api/stats/global", { params });
       setData(res.data);
     } catch (err) {
@@ -71,16 +74,6 @@ export default function Statistics() {
       setLoading(false);
     }
   };
-
-  // Hide the disease_category pie when the user already narrowed to one
-  // workflow; otherwise the card would render a single slice with no signal.
-  const visibleDimensions = useMemo(() => {
-    const entries = Object.entries(DIMENSION_LABELS);
-    if (filter !== ALL_DISEASES) {
-      return entries.filter(([key]) => key !== "disease_category");
-    }
-    return entries;
-  }, [filter]);
 
   if (error) {
     return (
@@ -107,17 +100,18 @@ export default function Statistics() {
       <Space style={{ marginBottom: 24 }} wrap>
         <Text strong>Disease workflow:</Text>
         <Select
-          value={filter}
-          onChange={setFilter}
+          value={selectedDisease}
+          onChange={setSelectedDisease}
           style={{ minWidth: 260 }}
-          options={[
-            { value: ALL_DISEASES, label: "All diseases" },
-            ...diseases.map((d) => ({ value: d.label, label: d.label })),
-          ]}
+          placeholder="Select a disease workflow"
+          allowClear
+          options={diseases.map((d) => ({ value: d.label, label: d.label }))}
         />
       </Space>
 
-      {loading ? (
+      {!selectedDisease ? (
+        <Empty description="Select a disease workflow to view statistics." />
+      ) : loading ? (
         <div style={{ textAlign: "center", padding: "4rem" }}>
           <Spin size="large" />
         </div>
@@ -144,10 +138,11 @@ export default function Statistics() {
             ))}
           </Row>
 
-          {visibleDimensions.map(([dimKey, dimLabel]) => (
+          {Object.entries(DIMENSION_LABELS)
+            .filter(([dimKey]) => dimKey !== "disease_category")
+            .map(([dimKey, dimLabel]) => (
             <DimensionSection
               key={dimKey}
-              dimensionKey={dimKey}
               dimensionLabel={dimLabel}
               dimensionData={data.dimensions[dimKey]}
             />
@@ -198,7 +193,7 @@ function ZipCodeMapSection({ zipDimensionData }) {
 
 const PIE_CATEGORIES = CATEGORIES.filter((cat) => cat !== "Negative");
 
-function DimensionSection({ dimensionKey, dimensionLabel, dimensionData }) {
+function DimensionSection({ dimensionLabel, dimensionData }) {
   if (!dimensionData) return null;
 
   const hasData = PIE_CATEGORIES.some(
