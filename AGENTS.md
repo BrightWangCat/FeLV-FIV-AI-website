@@ -11,7 +11,7 @@ lfa-reader/
 │   ├── web/          React 19 + Vite + Ant Design,在 AWS Linux 开发
 │   └── ios/          SwiftUI,iOS 17+,Xcode 工程 apps/ios/LFAReader.xcodeproj,仅在 macOS 开发
 ├── shared/data/      跨端共享资源,web 通过 Vite alias @shared 引用
-└── tasks/            本地经验记录,不入库
+└── tasks/            预留目录,当前不使用,不入库
 ```
 
 入口:后端 `apps/backend/app/main.py`,Web `apps/web/src/main.jsx`,iOS `apps/ios/LFAReader/LFAReaderApp.swift`。
@@ -25,10 +25,12 @@ lfa-reader/
 | Git 远程仓库 | 全部代码 | 不入库 |
 
 约定:
-- 当前会话默认在本机仓库工作;调整后端或 Web 代码时,必须先 SSH 到 AWS 主机 `/home/ubuntu/lfa-reader` 上修改。
+- 当前会话所有代码默认都在本机仓库修改,包括 `apps/backend`、`apps/web`、`apps/ios` 与 `shared/`。
+- 需要测试 Web 或 backend 的 AWS 环境时,先由用户把本机代码推送到 Git 远程仓库,再 SSH 到 AWS 主机 `/home/ubuntu/lfa-reader` 执行 `git pull`、重启服务并验证。
+- 未完成 Git 同步前,不得把 AWS 主机上的旧代码误认为当前实现。
 - iOS 代码在本机仓库 `apps/ios/` 下开发与修改,不得在 AWS 主机上编辑 iOS 代码。
 - 本机仓库与 Git 远程仓库共同构成所有代码的全量备份,不得把 AWS 主机视为唯一代码来源。
-- 后端与 Web 在 AWS Linux 主机开发与运行,后端服务也在 AWS 主机上运行。
+- 后端与 Web 的线上测试运行在 AWS Linux 主机,后端服务也在 AWS 主机上运行。
 - 用户数据(uploads, SQLite 数据库,.env)无论来自 web 或 iOS 上传,均落在 AWS Linux 本机,不入库,不同步到 macOS。
 
 ## 数据安全(最高优先级)
@@ -72,19 +74,21 @@ lfa-reader/
 
 ### 完成验证
 - 通过运行检查、查看日志、演示功能证明可用,再标记完成。
+- 涉及 Web 或 backend 的联调与环境测试时,默认先在本机完成代码修改,再在用户完成 `git push` 后 SSH 到 AWS 主机 `git pull` 并重启相关服务验证。
 - 自问:资深工程师是否会签字通过?
 - 重大更改完成后,检查 `README.md` 是否需要同步(项目结构、启动命令、依赖、对外接口等);如需则一并更新再提交。
 
 ### 改动哲学
 - 简单优先:每次改动尽可能小,只触动必要部分。
 - 不糊弄:找根因,严禁临时绕过和 hack。简单明显的修复不必过度设计。
-- 用户每次纠正后,把模式与预防规则追加到 `tasks/lessons.md`(本地保存,不入库,不存在则创建);会话开始若文件存在则先阅读。
+- 用户每次纠正后,直接以最新明确指示为准,不再创建、维护或读取 `tasks/lessons.md`。
 
 ## 开发约定
 
 ### 服务重启
-修改后端 Python 代码(router、service、model 等)后立即重启后端;修改前端代码后重启前端 dev server(若运行中)。在 AWS 主机 `/home/ubuntu/lfa-reader` 仓库根目录执行:
+本机修改代码后,需要在 AWS 环境验证 Web 或 backend 时,先确认用户已把最新代码推送到 Git 远程仓库,再 SSH 到 AWS 主机 `/home/ubuntu/lfa-reader` 拉取并重启服务。在 AWS 主机仓库根目录执行:
 
+- 拉取代码:`git pull`
 - 后端:`kill $(pgrep -f "uvicorn app.main:app") 2>/dev/null; cd apps/backend && nohup venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 > uvicorn.log 2>&1 & disown`
 - 前端:`kill $(pgrep -f "vite") 2>/dev/null; cd apps/web && nohup npm run dev > vite.log 2>&1 & disown`
 - 查进程:`ps aux | grep -E "uvicorn|vite" | grep -v grep`
