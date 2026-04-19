@@ -168,6 +168,13 @@ The classification engine uses a deterministic two-stage approach (no ML model r
 | `DATABASE_URL` | Database connection string | `sqlite:///./lfa_reader.db` |
 | `UPLOAD_DIR` | Image upload directory | `./uploads` |
 
+## Operations
+
+- Backup and restore scripts live in [`scripts/`](scripts/). The host runs
+  systemd timers that snapshot the SQLite database and `uploads/` hourly,
+  daily, and weekly into `/home/ubuntu/backups/lfa-reader/`. See
+  [`scripts/README.md`](scripts/README.md) for usage and recovery steps.
+
 ## License
 
 This project is intended for veterinary diagnostic research purposes.
