@@ -315,15 +315,11 @@ struct NewTestView: View {
     }
 
     private func workflowIcon(for workflow: DiseaseWorkflow) -> String {
-        switch workflow.id {
-        case "fiv_felv":
-            return "cross.case.fill"
-        case "tick_borne":
-            return "pawprint.fill"
-        case "canine_urothelial_carcinoma":
-            return "drop.fill"
-        default:
-            return "testtube.2"
+        switch workflow.species {
+        case .cat:
+            return "cat.fill"
+        case .dog:
+            return "dog.fill"
         }
     }
 }
