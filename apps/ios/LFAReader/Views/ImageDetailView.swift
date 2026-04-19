@@ -183,7 +183,10 @@ struct ImageDetailView: View {
                 Button {
                     Task { await viewModel.reclassify() }
                 } label: {
-                    Label("Run Classification", systemImage: "arrow.clockwise")
+                    Label(
+                        image.cvResult == nil ? "Run Classification" : "Re-run Classification",
+                        systemImage: "arrow.clockwise"
+                    )
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)

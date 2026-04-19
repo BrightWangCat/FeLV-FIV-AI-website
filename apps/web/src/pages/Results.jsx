@@ -223,6 +223,14 @@ export default function Results() {
     );
   }
 
+  const classificationButtonLabel = submitting
+    ? "Submitting..."
+    : classifyStatus === "completed"
+      ? "Re-run Classification"
+      : classifyStatus === "failed"
+        ? "Retry Classification"
+        : "Run Classification";
+
   const isRunning = classifyStatus === "running";
 
   return (
@@ -259,7 +267,7 @@ export default function Results() {
               loading={submitting}
               onClick={handleCVClassify}
             >
-              Run Classification
+              {classificationButtonLabel}
             </Button>
           ) : (
             <Button danger icon={<StopOutlined />} onClick={handleCancel}>
