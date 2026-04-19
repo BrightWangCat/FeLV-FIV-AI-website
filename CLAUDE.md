@@ -95,5 +95,5 @@ lfa-reader/
 
 ### Git 提交
 - 完成主要功能后立即 `git add` 并 `git commit`,commit message 由 Claude 撰写,简洁聚焦"为什么"。
-- **严禁自己执行 `git push` / `git push --force`**。推送到远程一律由用户亲自完成。
+- **commit 完成即为本次工作终点**。之后的任何 git 动作(`push`、`push --force`、tag、PR、release、deploy、issue 更新、外部通知)一律由用户亲自完成,严禁代劳;commit 后只汇报"已 commit XXXXXXX"等待用户接手。
 - 提交前确认 `.gitignore` 已排除敏感文件:数据库、.env、上传目录、凭证。
