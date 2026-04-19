@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
   Row,
   Col,
@@ -8,8 +9,7 @@ import {
   Spin,
   Alert,
   Empty,
-  Select,
-  Space,
+  Tag,
 } from "antd";
 import { Pie } from "@ant-design/charts";
 import api from "../services/api";
@@ -44,11 +44,27 @@ const PIE_PALETTE = [
   "#4fd1c5", "#fc8181", "#90cdf4", "#fbd38d", "#c6f6d5",
 ];
 
+const CATEGORY_ORDER = ["Infectious", "Cancer"];
+const SPECIES_LABEL = { cat: "Cats", dog: "Dogs" };
+
 export default function Statistics() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [selectedDisease, setSelectedDisease] = useState();
+  const selectedDiseaseId = searchParams.get("disease");
+  const selectedDisease = useMemo(
+    () => diseases.find((disease) => disease.id === selectedDiseaseId),
+    [selectedDiseaseId]
+  );
+  const groupedDiseases = useMemo(
+    () =>
+      CATEGORY_ORDER.map((category) => ({
+        category,
+        items: diseases.filter((disease) => disease.category === category),
+      })),
+    []
+  );
 
   useEffect(() => {
     if (!selectedDisease) {
@@ -58,7 +74,7 @@ export default function Statistics() {
       return;
     }
 
-    fetchGlobalStats(selectedDisease);
+    fetchGlobalStats(selectedDisease.label);
   }, [selectedDisease]);
 
   const fetchGlobalStats = async (diseaseFilter) => {
@@ -73,6 +89,10 @@ export default function Statistics() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDiseaseSelect = (diseaseId) => {
+    setSearchParams({ disease: diseaseId });
   };
 
   if (error) {
@@ -97,17 +117,42 @@ export default function Statistics() {
         Aggregated results from all users' tests with patient information
       </Text>
 
-      <Space style={{ marginBottom: 24 }} wrap>
-        <Text strong>Disease workflow:</Text>
-        <Select
-          value={selectedDisease}
-          onChange={setSelectedDisease}
-          style={{ minWidth: 260 }}
-          placeholder="Select a disease workflow"
-          allowClear
-          options={diseases.map((d) => ({ value: d.label, label: d.label }))}
-        />
-      </Space>
+      {groupedDiseases.map(({ category, items }) => (
+        <div key={category} style={{ marginBottom: 32 }}>
+          <Title level={4} style={{ color: "#2d3748", marginBottom: 16 }}>
+            {category}
+          </Title>
+          <Row gutter={[16, 16]}>
+            {items.map((disease) => {
+              const isSelected = disease.id === selectedDisease?.id;
+
+              return (
+                <Col xs={24} sm={12} md={8} key={disease.id}>
+                  <Card
+                    hoverable
+                    onClick={() => handleDiseaseSelect(disease.id)}
+                    styles={{ body: { padding: 20 } }}
+                    style={{
+                      height: "100%",
+                      borderColor: isSelected ? "#2b6cb0" : "#e2e8f0",
+                      boxShadow: isSelected ? "0 0 0 2px rgba(43, 108, 176, 0.12)" : "none",
+                    }}
+                  >
+                    <Title level={5} style={{ color: "#1a365d", margin: 0 }}>
+                      {disease.label}
+                    </Title>
+                    <div style={{ marginTop: 12 }}>
+                      <Tag color={disease.species === "cat" ? "magenta" : "blue"}>
+                        {SPECIES_LABEL[disease.species]}
+                      </Tag>
+                    </div>
+                  </Card>
+                </Col>
+              );
+            })}
+          </Row>
+        </div>
+      ))}
 
       {!selectedDisease ? (
         <Empty description="Select a disease workflow to view statistics." />
