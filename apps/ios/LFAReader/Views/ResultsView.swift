@@ -2,9 +2,10 @@ import SwiftUI
 
 struct ResultsView: View {
     @State private var viewModel = ResultsViewModel()
+    @State private var navigationPath: [Int] = []
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $navigationPath) {
             Group {
                 if viewModel.isLoading && viewModel.images.isEmpty {
                     ProgressView("Loading results...")
@@ -15,6 +16,9 @@ struct ResultsView: View {
                 }
             }
             .navigationTitle("Results")
+            .navigationDestination(for: Int.self) { imageId in
+                ImageDetailView(imageId: imageId)
+            }
             .task {
                 await viewModel.loadImages()
             }
@@ -64,8 +68,8 @@ struct ResultsView: View {
     private var resultList: some View {
         List {
             ForEach(viewModel.images) { image in
-                NavigationLink {
-                    ImageDetailView(imageId: image.id)
+                Button {
+                    navigationPath.append(image.id)
                 } label: {
                     resultCard(for: image)
                 }
@@ -112,6 +116,11 @@ struct ResultsView: View {
                 }
 
                 Spacer(minLength: 0)
+
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.bold))
+                    .foregroundStyle(.tertiary)
+                    .padding(.top, 4)
             }
 
             HStack(spacing: 10) {
