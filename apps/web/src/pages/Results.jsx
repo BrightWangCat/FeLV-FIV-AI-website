@@ -223,14 +223,6 @@ export default function Results() {
     );
   }
 
-  const cvButtonLabel = submitting
-    ? "Submitting..."
-    : classifyStatus === "completed"
-      ? "Re-run CV"
-      : classifyStatus === "failed"
-        ? "Retry CV"
-        : "Run CV Classification";
-
   const isRunning = classifyStatus === "running";
 
   return (
@@ -267,7 +259,7 @@ export default function Results() {
               loading={submitting}
               onClick={handleCVClassify}
             >
-              {isMobile ? "Run CV" : cvButtonLabel}
+              Run Classification
             </Button>
           ) : (
             <Button danger icon={<StopOutlined />} onClick={handleCancel}>
