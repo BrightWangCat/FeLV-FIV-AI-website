@@ -238,12 +238,7 @@ export default function Results() {
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-start",
           marginBottom: 24,
-          flexWrap: "wrap",
-          gap: 16,
         }}
       >
         <div>
@@ -255,41 +250,52 @@ export default function Results() {
             Uploaded {formatEasternDateTime(image.created_at)}
           </Text>
         </div>
-        <Space wrap size={isMobile ? "small" : "middle"}>
-          {!isRunning ? (
-            <Button
-              icon={<ExperimentOutlined />}
-              style={{
-                background: "#276749",
-                borderColor: "#276749",
-                color: "#fff",
-              }}
-              size={isMobile ? "small" : "middle"}
-              loading={submitting}
-              onClick={handleCVClassify}
-            >
-              {classificationButtonLabel}
-            </Button>
-          ) : (
-            <Button danger icon={<StopOutlined />} onClick={handleCancel}>
-              Cancel Job
-            </Button>
-          )}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 12,
+            marginTop: 16,
+          }}
+        >
           <Link to="/history">
             <Button icon={<ArrowLeftOutlined />} size={isMobile ? "small" : "middle"}>
               History
             </Button>
           </Link>
-          <Link to="/">
-            <Button
-              icon={<PlusOutlined />}
-              type="primary"
-              size={isMobile ? "small" : "middle"}
-            >
-              New Test
-            </Button>
-          </Link>
-        </Space>
+          <Space wrap size={isMobile ? "small" : "middle"}>
+            {!isRunning ? (
+              <Button
+                icon={<ExperimentOutlined />}
+                style={{
+                  background: "#276749",
+                  borderColor: "#276749",
+                  color: "#fff",
+                }}
+                size={isMobile ? "small" : "middle"}
+                loading={submitting}
+                onClick={handleCVClassify}
+              >
+                {classificationButtonLabel}
+              </Button>
+            ) : (
+              <Button danger icon={<StopOutlined />} onClick={handleCancel}>
+                Cancel Job
+              </Button>
+            )}
+            <Link to="/">
+              <Button
+                icon={<PlusOutlined />}
+                type="primary"
+                size={isMobile ? "small" : "middle"}
+              >
+                New Test
+              </Button>
+            </Link>
+          </Space>
+        </div>
       </div>
 
       {isRunning && (
@@ -313,18 +319,22 @@ export default function Results() {
 
       {image.warnings && image.warnings.length > 0 && (
         <Alert
-          type="error"
+          type="warning"
           showIcon
-          icon={<ExclamationCircleFilled style={{ color: "#ff4d4f" }} />}
-          message="Advisory"
+          icon={<ExclamationCircleFilled style={{ color: "#8e6a00" }} />}
+          message={<span style={{ color: "#684e00", fontWeight: 600 }}>Advisory</span>}
           description={
-            <ul style={{ margin: 0, paddingLeft: 20 }}>
+            <ul style={{ margin: 0, paddingLeft: 20, color: "#684e00" }}>
               {image.warnings.map((key) => (
                 <li key={key}>{resolveWarning(key)}</li>
               ))}
             </ul>
           }
-          style={{ marginBottom: 24 }}
+          style={{
+            marginBottom: 24,
+            background: "#fcf4d6",
+            border: "1px solid #d2a106",
+          }}
         />
       )}
 
