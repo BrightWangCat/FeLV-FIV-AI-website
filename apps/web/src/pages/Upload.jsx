@@ -1,12 +1,7 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   Typography,
-  Card,
-  Row,
-  Col,
-  Button,
-  Input,
   Upload,
   Steps,
   Progress,
@@ -14,22 +9,16 @@ import {
   Radio,
   Select,
   Form,
+  Input,
   Result,
-  Space,
+  Button,
   App,
 } from "antd";
 import {
-  FileImageOutlined,
-  CopyOutlined,
-  ArrowLeftOutlined,
   InboxOutlined,
-  UploadOutlined,
-  DeleteOutlined,
   CameraOutlined,
 } from "@ant-design/icons";
-import api from "../services/api";
 import { uploadSingle } from "../services/api";
-import { useAuth } from "../context/AuthContext";
 
 const { Title, Text } = Typography;
 const { Dragger } = Upload;
@@ -37,202 +26,18 @@ const { Dragger } = Upload;
 const ALLOWED_TYPES = ["image/jpeg", "image/png"];
 const MAX_SIZE = 20 * 1024 * 1024; // 20MB
 
-/* ------------------------------------------------------------------ */
-/*  Batch Upload                                                       */
-/* ------------------------------------------------------------------ */
-function BatchUpload() {
-  const [fileList, setFileList] = useState([]);
-  const [batchName, setBatchName] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [error, setError] = useState("");
-  const navigate = useNavigate();
-  const { message } = App.useApp();
-
-  const formatSize = (bytes) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  // Validate a single file before adding to list
-  const beforeUpload = (file) => {
-    if (!ALLOWED_TYPES.includes(file.type)) {
-      message.error(`${file.name}: unsupported format. Only JPG/PNG allowed.`);
-      return Upload.LIST_IGNORE;
-    }
-    if (file.size > MAX_SIZE) {
-      message.error(`${file.name}: exceeds 20MB limit.`);
-      return Upload.LIST_IGNORE;
-    }
-    return false; // Prevent auto-upload, add to fileList only
-  };
-
-  // Handle fileList changes with unique filename deduplication
-  const handleChange = useCallback(({ fileList: newFileList }) => {
-    const seen = new Set();
-    const deduped = newFileList.filter((f) => {
-      const name = f.name || f.originFileObj?.name;
-      if (seen.has(name)) return false;
-      seen.add(name);
-      return true;
-    });
-    setFileList(deduped);
-  }, []);
-
-  const handleUpload = async () => {
-    if (fileList.length === 0) return;
-    setError("");
-    setUploading(true);
-    setProgress(0);
-
-    const formData = new FormData();
-    // Extract native File objects from Ant Design fileList items
-    fileList.forEach((f) => formData.append("files", f.originFileObj));
-    if (batchName.trim()) {
-      formData.append("batch_name", batchName.trim());
-    }
-
-    try {
-      const res = await api.post("/api/upload/batch", formData, {
-        headers: { "Content-Type": "multipart/form-data" },
-        onUploadProgress: (e) => {
-          if (e.total) {
-            setProgress(Math.round((e.loaded / e.total) * 100));
-          }
-        },
-      });
-      navigate(`/results?batch=${res.data.id}`);
-    } catch (err) {
-      setError(err.response?.data?.detail || "Upload failed");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  return (
-    <>
-      <div style={{ marginBottom: 20 }}>
-        <Text strong style={{ display: "block", marginBottom: 6 }}>
-          Batch Name (optional)
-        </Text>
-        <Input
-          value={batchName}
-          onChange={(e) => setBatchName(e.target.value)}
-          placeholder="e.g. Clinic A - Feb 2026"
-          disabled={uploading}
-          size="large"
-        />
-      </div>
-
-      <Dragger
-        multiple
-        accept=".jpg,.jpeg,.png"
-        fileList={fileList}
-        beforeUpload={beforeUpload}
-        onChange={handleChange}
-        onRemove={(file) => {
-          setFileList((prev) => prev.filter((f) => f.uid !== file.uid));
-        }}
-        showUploadList={{
-          showPreviewIcon: false,
-          showRemoveIcon: !uploading,
-          extra: ({ size }) => (
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              ({formatSize(size)})
-            </Text>
-          ),
-        }}
-        disabled={uploading}
-        style={{ marginBottom: 16 }}
-      >
-        <p className="ant-upload-drag-icon">
-          <InboxOutlined />
-        </p>
-        <p className="ant-upload-text">
-          Drag and drop images here, or click to select
-        </p>
-        <p className="ant-upload-hint">
-          Supported: JPG, PNG. Max 20MB per file.
-        </p>
-      </Dragger>
-
-      {error && (
-        <Alert
-          type="error"
-          message={error}
-          showIcon
-          closable
-          onClose={() => setError("")}
-          style={{ marginBottom: 16 }}
-        />
-      )}
-
-      {fileList.length > 0 && (
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: 16,
-          }}
-        >
-          <Text>
-            {fileList.length} file{fileList.length > 1 ? "s" : ""} selected
-          </Text>
-          <Button
-            type="text"
-            danger
-            icon={<DeleteOutlined />}
-            onClick={() => setFileList([])}
-            disabled={uploading}
-          >
-            Clear all
-          </Button>
-        </div>
-      )}
-
-      {uploading && (
-        <Progress
-          percent={progress}
-          status="active"
-          style={{ marginBottom: 16 }}
-        />
-      )}
-
-      <Button
-        type="primary"
-        block
-        size="large"
-        icon={<UploadOutlined />}
-        loading={uploading}
-        disabled={fileList.length === 0}
-        onClick={handleUpload}
-      >
-        {uploading
-          ? "Uploading..."
-          : `Upload ${fileList.length} image${fileList.length !== 1 ? "s" : ""}`}
-      </Button>
-    </>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Single Upload (multi-step flow)                                    */
-/* ------------------------------------------------------------------ */
-function SingleUpload() {
+export default function UploadPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { message } = App.useApp();
 
-  // Step state
   const [step, setStep] = useState(0);
 
-  // Step 1 - file
+  // Step 1: file
   const [file, setFile] = useState(null);
   const [preview, setPreview] = useState(null);
 
-  // Step 2 - patient info
+  // Step 2: patient info
   const [shareInfo, setShareInfo] = useState(null);
   const [species, setSpecies] = useState("");
   const [age, setAge] = useState("");
@@ -240,7 +45,13 @@ function SingleUpload() {
   const [breed, setBreed] = useState("");
   const [zipCode, setZipCode] = useState("");
 
-  // 从相机页面返回时，读取 sessionStorage 中的拍摄图片
+  // Submission
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState(null);
+
+  // 从相机页面返回时,读取 sessionStorage 中的拍摄图片
   useEffect(() => {
     if (location.state?.fromCamera) {
       const dataUrl = sessionStorage.getItem("capturedImage");
@@ -257,22 +68,13 @@ function SingleUpload() {
             setStep(1);
           });
       }
-      // 清除 state 避免刷新时重复触发
       window.history.replaceState({}, "");
     }
   }, [location.state]);
 
-  // Submission
-  const [uploading, setUploading] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [error, setError] = useState("");
-  const [result, setResult] = useState(null);
-
   const selectFile = (f) => {
     if (!ALLOWED_TYPES.includes(f.type)) {
-      message.error(
-        `${f.name}: unsupported format. Only JPG/PNG allowed.`
-      );
+      message.error(`${f.name}: unsupported format. Only JPG/PNG allowed.`);
       return;
     }
     if (f.size > MAX_SIZE) {
@@ -281,8 +83,7 @@ function SingleUpload() {
     }
     setError("");
     setFile(f);
-    const url = URL.createObjectURL(f);
-    setPreview(url);
+    setPreview(URL.createObjectURL(f));
   };
 
   const handleSubmit = async () => {
@@ -317,34 +118,45 @@ function SingleUpload() {
     }
   };
 
-  // Success screen
   if (result) {
     return (
-      <Result
-        status="success"
-        title="Upload Successful"
-        subTitle={
-          <>
-            <div>Batch ID: {result.batch_id}</div>
-            <div>Image ID: {result.image_id}</div>
-            {result.patient_info && <div>Patient info saved.</div>}
-          </>
-        }
-        extra={[
-          <Button
-            type="primary"
-            key="view"
-            onClick={() => navigate(`/results?batch=${result.batch_id}`)}
-          >
-            View Results
-          </Button>,
-        ]}
-      />
+      <div style={{ maxWidth: 720, margin: "0 auto" }}>
+        <Result
+          status="success"
+          title="Upload Successful"
+          subTitle={
+            <>
+              <div>Image ID: {result.id}</div>
+              {result.patient_info && <div>Patient info saved.</div>}
+            </>
+          }
+          extra={[
+            <Button
+              type="primary"
+              key="view"
+              onClick={() => navigate(`/results?image=${result.id}`)}
+            >
+              View Result
+            </Button>,
+          ]}
+        />
+      </div>
     );
   }
 
   return (
-    <>
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      <Title level={3} style={{ color: "#1a365d", marginBottom: 8 }}>
+        New Test
+      </Title>
+      <Text
+        type="secondary"
+        style={{ display: "block", marginBottom: 24, lineHeight: 1.5 }}
+      >
+        Upload a single FeLV/FIV lateral flow assay cassette image.
+        Supported formats: JPG, PNG. Maximum 20MB.
+      </Text>
+
       <Steps
         current={step}
         items={[
@@ -403,9 +215,7 @@ function SingleUpload() {
               <p className="ant-upload-drag-icon">
                 <CameraOutlined />
               </p>
-              <p className="ant-upload-text">
-                Tap to capture with camera
-              </p>
+              <p className="ant-upload-text">Tap to capture with camera</p>
               <p className="ant-upload-hint">
                 Use your device camera to take a photo
               </p>
@@ -434,13 +244,7 @@ function SingleUpload() {
             </div>
           )}
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              marginTop: 24,
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 24 }}>
             <Button
               type="primary"
               size="large"
@@ -528,13 +332,7 @@ function SingleUpload() {
             </Form>
           )}
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: 24,
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24 }}>
             <Button size="large" onClick={() => setStep(0)}>
               Back
             </Button>
@@ -572,18 +370,8 @@ function SingleUpload() {
             />
           )}
 
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              marginTop: 24,
-            }}
-          >
-            <Button
-              size="large"
-              onClick={() => setStep(1)}
-              disabled={uploading}
-            >
+          <div style={{ display: "flex", justifyContent: "space-between", marginTop: 24 }}>
+            <Button size="large" onClick={() => setStep(1)} disabled={uploading}>
               Back
             </Button>
             <Button
@@ -597,91 +385,6 @@ function SingleUpload() {
           </div>
         </>
       )}
-    </>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Main Upload page                                                   */
-/* ------------------------------------------------------------------ */
-export default function UploadPage() {
-  const { user } = useAuth();
-  const location = useLocation();
-  // 从 /camera 返回时自动进入 single 模式
-  const initialMode = location.state?.mode || null;
-  const [mode, setMode] = useState(initialMode);
-
-  return (
-    <div style={{ maxWidth: 720, margin: "0 auto" }}>
-      <Title level={3} style={{ color: "#1a365d", marginBottom: 8 }}>
-        New Test
-      </Title>
-      <Text
-        type="secondary"
-        style={{ display: "block", marginBottom: 24, lineHeight: 1.5 }}
-      >
-        Upload FeLV/FIV lateral flow assay cassette images for a new diagnostic
-        test. Supported formats: JPG, PNG. Maximum 20MB per file.
-      </Text>
-
-      {/* Mode selector */}
-      {!mode && (
-        <Row gutter={16} style={{ marginBottom: 24 }}>
-          <Col xs={24} sm={["batch", "admin"].includes(user?.role) ? 12 : 24}>
-            <Card
-              hoverable
-              onClick={() => setMode("single")}
-              style={{ textAlign: "center", height: "100%" }}
-              styles={{ body: { padding: "2rem 1.5rem" } }}
-            >
-              <FileImageOutlined
-                style={{ fontSize: 36, color: "#2b6cb0", marginBottom: 12 }}
-              />
-              <Title level={5} style={{ marginBottom: 8 }}>
-                Single Upload
-              </Title>
-              <Text type="secondary">
-                Upload one image with optional patient info
-              </Text>
-            </Card>
-          </Col>
-          {["batch", "admin"].includes(user?.role) && (
-            <Col xs={24} sm={12}>
-              <Card
-                hoverable
-                onClick={() => setMode("batch")}
-                style={{ textAlign: "center", height: "100%" }}
-                styles={{ body: { padding: "2rem 1.5rem" } }}
-              >
-                <CopyOutlined
-                  style={{ fontSize: 36, color: "#2b6cb0", marginBottom: 12 }}
-                />
-                <Title level={5} style={{ marginBottom: 8 }}>
-                  Batch Upload
-                </Title>
-                <Text type="secondary">
-                  Upload multiple images at once
-                </Text>
-              </Card>
-            </Col>
-          )}
-        </Row>
-      )}
-
-      {/* Back to mode selection */}
-      {mode && (
-        <Button
-          type="link"
-          icon={<ArrowLeftOutlined />}
-          onClick={() => setMode(null)}
-          style={{ padding: 0, marginBottom: 20 }}
-        >
-          Back to upload options
-        </Button>
-      )}
-
-      {mode === "single" && <SingleUpload />}
-      {mode === "batch" && <BatchUpload />}
     </div>
   );
 }

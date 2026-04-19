@@ -13,25 +13,21 @@ import {
 } from "antd";
 import {
   EyeOutlined,
-  BarChartOutlined,
-  DownloadOutlined,
   DeleteOutlined,
   PlusOutlined,
 } from "@ant-design/icons";
-import api, { API_BASE_URL } from "../services/api";
+import { listImages, deleteImage } from "../services/api";
 
 const { Title } = Typography;
 
-// Status color and label mapping
 const statusConfig = {
   completed: { color: "green", label: "Done" },
   running: { color: "gold", label: "Running" },
-  queued: { color: "blue", label: "Queued" },
   failed: { color: "red", label: "Failed" },
 };
 
 export default function History() {
-  const [batches, setBatches] = useState([]);
+  const [images, setImages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [deletingId, setDeletingId] = useState(null);
@@ -39,13 +35,13 @@ export default function History() {
   const { message } = App.useApp();
 
   useEffect(() => {
-    fetchBatches();
+    fetchImages();
   }, []);
 
-  const fetchBatches = async () => {
+  const fetchImages = async () => {
     try {
-      const res = await api.get("/api/upload/batches");
-      setBatches(res.data);
+      const res = await listImages();
+      setImages(res.data);
     } catch (err) {
       setError(err.response?.data?.detail || "Failed to load history");
     } finally {
@@ -53,20 +49,20 @@ export default function History() {
     }
   };
 
-  const handleDelete = async (batchId) => {
-    setDeletingId(batchId);
+  const handleDelete = async (imageId) => {
+    setDeletingId(imageId);
     try {
-      await api.delete(`/api/upload/batch/${batchId}`);
-      setBatches((prev) => prev.filter((b) => b.id !== batchId));
+      await deleteImage(imageId);
+      setImages((prev) => prev.filter((img) => img.id !== imageId));
     } catch (err) {
-      message.error(err.response?.data?.detail || "Failed to delete batch");
+      message.error(err.response?.data?.detail || "Failed to delete image");
     } finally {
       setDeletingId(null);
     }
   };
 
-  const formatDate = (dateStr) => {
-    return new Date(dateStr).toLocaleString("en-US", {
+  const formatDate = (dateStr) =>
+    new Date(dateStr).toLocaleString("en-US", {
       timeZone: "America/New_York",
       year: "numeric",
       month: "short",
@@ -75,6 +71,19 @@ export default function History() {
       minute: "2-digit",
       hour12: true,
     });
+
+  const renderResultTag = (record) => {
+    const final = record.manual_correction || record.cv_result;
+    if (final) {
+      const isCorrected = !!record.manual_correction;
+      return (
+        <Tag color={isCorrected ? "green" : "blue"}>
+          {final}
+          {isCorrected && " ✓"}
+        </Tag>
+      );
+    }
+    return <Typography.Text type="secondary">--</Typography.Text>;
   };
 
   const columns = [
@@ -87,21 +96,17 @@ export default function History() {
       responsive: ["md"],
     },
     {
-      title: "Batch Name",
-      dataIndex: "name",
-      key: "name",
+      title: "Filename",
+      dataIndex: "original_filename",
+      key: "filename",
       ellipsis: true,
-      render: (name) =>
-        name || (
-          <Typography.Text type="secondary">Untitled</Typography.Text>
-        ),
     },
     {
-      title: "Images",
-      dataIndex: "total_images",
-      key: "images",
-      width: 90,
+      title: "Result",
+      key: "result",
+      width: 130,
       align: "center",
+      render: (_, record) => renderResultTag(record),
     },
     {
       title: "Status",
@@ -137,37 +142,19 @@ export default function History() {
     {
       title: "Actions",
       key: "actions",
-      width: 200,
+      width: 160,
       render: (_, record) => (
         <Space size="small" wrap>
           <Button
             size="small"
             icon={<EyeOutlined />}
-            onClick={() => navigate(`/results?batch=${record.id}`)}
+            onClick={() => navigate(`/results?image=${record.id}`)}
           >
             View
           </Button>
-          {record.total_images > 1 && (
-            <>
-              <Button
-                size="small"
-                icon={<BarChartOutlined />}
-                onClick={() => navigate(`/stats?batch=${record.id}`)}
-              >
-                Stats
-              </Button>
-              <Button
-                size="small"
-                icon={<DownloadOutlined />}
-                href={`${API_BASE_URL}/api/export/batch/${record.id}/excel?token=${localStorage.getItem("token")}`}
-              >
-                Export
-              </Button>
-            </>
-          )}
           <Popconfirm
-            title="Delete this batch?"
-            description="This will delete all images and cannot be undone."
+            title="Delete this image?"
+            description="This cannot be undone."
             onConfirm={() => handleDelete(record.id)}
             okText="Delete"
             okType="danger"
@@ -217,7 +204,7 @@ export default function History() {
 
       <Table
         columns={columns}
-        dataSource={batches}
+        dataSource={images}
         rowKey="id"
         loading={loading}
         scroll={{ x: 500 }}

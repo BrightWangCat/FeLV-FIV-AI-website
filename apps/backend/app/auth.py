@@ -33,7 +33,7 @@ def get_current_user(
     token: str | None = Depends(oauth2_scheme_optional),
     db: Session = Depends(get_db),
 ) -> User:
-    # 支持两种传 token 方式：Authorization header 或 query 参数 ?token=xxx
+    # 支持两种传 token 方式:Authorization header 或 query 参数 ?token=xxx
     query_token = request.query_params.get("token")
     actual_token = token or query_token
 
@@ -70,15 +70,5 @@ def require_admin(current_user: User = Depends(get_current_user)) -> User:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Admin access required",
-        )
-    return current_user
-
-
-def require_batch_or_admin(current_user: User = Depends(get_current_user)) -> User:
-    """Dependency that ensures the current user has batch or admin role."""
-    if current_user.role not in ("batch", "admin"):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Batch upload permission required",
         )
     return current_user

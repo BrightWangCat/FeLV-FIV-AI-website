@@ -8,7 +8,6 @@ const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// Export base URL for components that build URLs outside of axios (e.g. <a href>)
 export { API_BASE_URL };
 
 api.interceptors.request.use((config) => {
@@ -25,5 +24,26 @@ export function uploadSingle(formData, onUploadProgress) {
     onUploadProgress,
   });
 }
+
+export const listImages = () => api.get("/api/upload/images");
+export const getImage = (imageId) => api.get(`/api/upload/image/${imageId}`);
+export const deleteImage = (imageId) => api.delete(`/api/upload/image/${imageId}`);
+export const classifyImage = (imageId) =>
+  api.post(`/api/readings/image/${imageId}/classify`);
+export const getClassifyStatus = (imageId) =>
+  api.get(`/api/readings/image/${imageId}/status`);
+export const cancelClassify = (imageId) =>
+  api.post(`/api/readings/image/${imageId}/cancel`);
+export const correctReading = (imageId, manualCorrection) =>
+  api.put(`/api/readings/image/${imageId}/correct`, {
+    manual_correction: manualCorrection,
+  });
+
+// Build a token-bearing URL for use in <img src> / download links.
+export const buildImageFileUrl = (imageId, original = false) => {
+  const token = localStorage.getItem("token");
+  const base = `${API_BASE_URL}/api/upload/image/${imageId}/file?token=${token}`;
+  return original ? `${base}&original=true` : base;
+};
 
 export default api;

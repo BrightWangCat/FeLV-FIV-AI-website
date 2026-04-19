@@ -11,45 +11,32 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     username = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
-    # Role-based access: "single", "batch", "admin"
+    # Role-based access: "single", "admin"
     role = Column(String, default="single", nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-
-
-class UploadBatch(Base):
-    __tablename__ = "upload_batches"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    name = Column(String, nullable=True)  # 用户可选的批次名称
-    total_images = Column(Integer, default=0)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    reading_status = Column(String, nullable=True, default=None)
-    classification_model = Column("claude_model", String, nullable=True, default=None)
-    reading_error = Column(String, nullable=True, default=None)
-
-    user = relationship("User", backref="batches")
-    images = relationship("Image", back_populates="batch", cascade="all, delete-orphan")
 
 
 class Image(Base):
     __tablename__ = "images"
 
     id = Column(Integer, primary_key=True, index=True)
-    batch_id = Column(Integer, ForeignKey("upload_batches.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     original_filename = Column(String, nullable=False)
     stored_filename = Column(String, nullable=False, unique=True)
     file_path = Column(String, nullable=False)
     file_size = Column(Integer, nullable=False)  # bytes
-    preprocessed_filename = Column(String, nullable=True)  # 预处理后图片的文件名
-    preprocessed_path = Column(String, nullable=True)  # 预处理后图片的完整路径
-    is_preprocessed = Column(Boolean, default=False, nullable=False)  # 是否已完成预处理
-    cv_result = Column(String, nullable=True)  # CV band detection classification result
-    cv_confidence = Column(String, nullable=True)  # CV band detection confidence level
-    manual_correction = Column(String, nullable=True)  # Manual correction by user
+    preprocessed_filename = Column(String, nullable=True)
+    preprocessed_path = Column(String, nullable=True)
+    is_preprocessed = Column(Boolean, default=False, nullable=False)
+    cv_result = Column(String, nullable=True)
+    cv_confidence = Column(String, nullable=True)
+    manual_correction = Column(String, nullable=True)
+    # Per-image CV classification status: None / "running" / "completed" / "failed"
+    reading_status = Column(String, nullable=True, default=None)
+    reading_error = Column(String, nullable=True, default=None)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    batch = relationship("UploadBatch", back_populates="images")
+    user = relationship("User", backref="images")
     patient_info = relationship(
         "PatientInfo", back_populates="image", uselist=False,
         cascade="all, delete-orphan",

@@ -1,42 +1,40 @@
 import { useState, useEffect } from "react";
 import { useSearchParams, Link } from "react-router-dom";
 import {
-  Row,
-  Col,
   Card,
   Tag,
   Button,
   Select,
   Space,
   Alert,
-  Progress,
   Spin,
   Collapse,
   Typography,
   App,
   Grid,
-  Dropdown,
+  Descriptions,
 } from "antd";
 import {
   EditOutlined,
   SaveOutlined,
   CloseOutlined,
   CheckOutlined,
-  DownloadOutlined,
-  BarChartOutlined,
   PlusOutlined,
   SyncOutlined,
   StopOutlined,
-  FileExcelOutlined,
   ExperimentOutlined,
-  FileImageOutlined,
-  EllipsisOutlined,
+  ArrowLeftOutlined,
 } from "@ant-design/icons";
-import api, { API_BASE_URL } from "../services/api";
-import { useAuth } from "../context/AuthContext";
+import {
+  getImage,
+  classifyImage,
+  getClassifyStatus,
+  cancelClassify,
+  correctReading,
+  buildImageFileUrl,
+} from "../services/api";
 
 const { useBreakpoint } = Grid;
-
 const { Title, Text } = Typography;
 
 const PATIENT_FIELDS = [
@@ -57,121 +55,95 @@ const CATEGORIES = [
 
 export default function Results() {
   const [searchParams] = useSearchParams();
-  const batchId = searchParams.get("batch");
+  const imageId = searchParams.get("image");
   const { message } = App.useApp();
-  const { user } = useAuth();
   const screens = useBreakpoint();
   const isMobile = !screens.md;
 
-  const [batch, setBatch] = useState(null);
+  const [image, setImage] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [editingId, setEditingId] = useState(null);
+
+  const [editing, setEditing] = useState(false);
   const [correctionValue, setCorrectionValue] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Classification state
   const [classifyStatus, setClassifyStatus] = useState(null);
-  const [classifyProgress, setClassifyProgress] = useState(0);
   const [classifyError, setClassifyError] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
-  // Per-image toggle: show original instead of preprocessed
-  const [showOriginal, setShowOriginal] = useState({});
+  const [showOriginal, setShowOriginal] = useState(false);
 
   useEffect(() => {
-    if (!batchId) {
-      setError("No batch specified");
+    if (!imageId) {
+      setError("No image specified");
       setLoading(false);
       return;
     }
-    fetchBatch();
-  }, [batchId]);
+    fetchImage();
+  }, [imageId]);
 
-  // Initialize classify status from batch data
   useEffect(() => {
-    if (batch) {
-      setClassifyStatus(batch.reading_status || null);
+    if (image) {
+      setClassifyStatus(image.reading_status || null);
     }
-  }, [batch]);
+  }, [image]);
 
-  // Poll status when queued or running (5-second interval)
+  // Poll status while running
   useEffect(() => {
-    if (classifyStatus !== "queued" && classifyStatus !== "running") return;
+    if (classifyStatus !== "running") return;
 
     const interval = setInterval(async () => {
       try {
-        const res = await api.get(`/api/readings/batch/${batchId}/status`);
+        const res = await getClassifyStatus(imageId);
         setClassifyStatus(res.data.reading_status);
-        setClassifyProgress(res.data.progress);
         setClassifyError(res.data.reading_error || "");
 
-        if (res.data.reading_status === "completed") {
+        if (
+          res.data.reading_status === "completed" ||
+          res.data.reading_status === "failed"
+        ) {
           clearInterval(interval);
-          fetchBatch();
-        } else if (res.data.reading_status === "failed") {
-          clearInterval(interval);
+          fetchImage();
         }
       } catch (err) {
         console.error("Status poll failed:", err);
       }
-    }, 5000);
+    }, 3000);
 
     return () => clearInterval(interval);
-  }, [classifyStatus, batchId]);
+  }, [classifyStatus, imageId]);
 
-  const fetchBatch = async () => {
+  const fetchImage = async () => {
     try {
-      const res = await api.get(`/api/upload/batch/${batchId}`);
-      setBatch(res.data);
+      const res = await getImage(imageId);
+      setImage(res.data);
     } catch (err) {
-      setError(err.response?.data?.detail || "Failed to load batch");
+      setError(err.response?.data?.detail || "Failed to load image");
     } finally {
       setLoading(false);
     }
   };
 
-  const getImageUrl = (imageId, original = false) => {
-    const token = localStorage.getItem("token");
-    const base = `${API_BASE_URL}/api/upload/image/${imageId}?token=${token}`;
-    return original ? `${base}&original=true` : base;
-  };
-
-  const toggleOriginal = (imageId) => {
-    setShowOriginal((prev) => ({ ...prev, [imageId]: !prev[imageId] }));
-  };
-
-  const startEdit = (image) => {
-    setEditingId(image.id);
-    setCorrectionValue(
-      image.manual_correction || image.cv_result || ""
-    );
+  const startEdit = () => {
+    setEditing(true);
+    setCorrectionValue(image.manual_correction || image.cv_result || "");
   };
 
   const cancelEdit = () => {
-    setEditingId(null);
+    setEditing(false);
     setCorrectionValue("");
   };
 
-  const saveCorrection = async (imageId) => {
+  const saveCorrection = async () => {
     setSaving(true);
     try {
-      await api.put(`/api/readings/image/${imageId}/correct`, {
-        manual_correction: correctionValue,
-      });
-      setBatch((prev) => ({
-        ...prev,
-        images: prev.images.map((img) =>
-          img.id === imageId
-            ? { ...img, manual_correction: correctionValue }
-            : img
-        ),
-      }));
-      setEditingId(null);
+      await correctReading(imageId, correctionValue);
+      setImage((prev) => ({ ...prev, manual_correction: correctionValue }));
+      setEditing(false);
     } catch (err) {
-      message.error(
-        err.response?.data?.detail || "Failed to save correction"
-      );
+      message.error(err.response?.data?.detail || "Failed to save correction");
     } finally {
       setSaving(false);
     }
@@ -181,9 +153,8 @@ export default function Results() {
     setSubmitting(true);
     setClassifyError("");
     try {
-      const res = await api.post(`/api/readings/batch/${batchId}/classify`);
+      const res = await classifyImage(imageId);
       setClassifyStatus(res.data.reading_status);
-      setClassifyProgress(0);
     } catch (err) {
       setClassifyError(
         err.response?.data?.detail || "Failed to submit CV classification"
@@ -195,45 +166,26 @@ export default function Results() {
 
   const handleCancel = async () => {
     try {
-      await api.post(`/api/readings/batch/${batchId}/cancel`);
+      await cancelClassify(imageId);
       setClassifyStatus(null);
-      setClassifyProgress(0);
       setClassifyError("");
     } catch (err) {
       message.error(err.response?.data?.detail || "Failed to cancel");
     }
   };
 
-  // Approve CV result as manual correction
-  const approveResult = async (imageId, value) => {
+  const approveResult = async () => {
+    if (!image?.cv_result) return;
     setSaving(true);
     try {
-      await api.put(`/api/readings/image/${imageId}/correct`, {
-        manual_correction: value,
-      });
-      setBatch((prev) => ({
-        ...prev,
-        images: prev.images.map((img) =>
-          img.id === imageId
-            ? { ...img, manual_correction: value }
-            : img
-        ),
-      }));
+      await correctReading(imageId, image.cv_result);
+      setImage((prev) => ({ ...prev, manual_correction: prev.cv_result }));
       message.success("Correction saved");
     } catch (err) {
-      message.error(
-        err.response?.data?.detail || "Failed to save correction"
-      );
+      message.error(err.response?.data?.detail || "Failed to save correction");
     } finally {
       setSaving(false);
     }
-  };
-
-  const renderCvTag = (image) => {
-    if (image.cv_result) {
-      return <Tag color="green">{image.cv_result}</Tag>;
-    }
-    return <Tag color="gold">Pending</Tag>;
   };
 
   if (loading) {
@@ -260,9 +212,6 @@ export default function Results() {
     );
   }
 
-  const isSingle = batch?.total_images === 1;
-
-  // Determine the CV action button label
   const cvButtonLabel = submitting
     ? "Submitting..."
     : classifyStatus === "completed"
@@ -271,9 +220,10 @@ export default function Results() {
         ? "Retry CV"
         : "Run CV Classification";
 
+  const isRunning = classifyStatus === "running";
+
   return (
-    <div style={{ maxWidth: 1100, margin: "0 auto" }}>
-      {/* Header */}
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div
         style={{
           display: "flex",
@@ -286,23 +236,15 @@ export default function Results() {
       >
         <div>
           <Title level={3} style={{ color: "#1a365d", margin: 0 }}>
-            {isSingle ? "Classification Result" : "Batch Results"}
+            Classification Result
           </Title>
           <Text type="secondary">
-            {batch.name && (
-              <Text strong style={{ marginRight: 8 }}>
-                {batch.name}
-              </Text>
-            )}
-            {batch.total_images} image
-            {batch.total_images !== 1 ? "s" : ""} {" \u00b7 "}
-            Uploaded {new Date(batch.created_at).toLocaleString()}
+            Image #{image.id} {" \u00b7 "}
+            Uploaded {new Date(image.created_at).toLocaleString()}
           </Text>
         </div>
         <Space wrap size={isMobile ? "small" : "middle"}>
-          {classifyStatus === null ||
-          classifyStatus === "completed" ||
-          classifyStatus === "failed" ? (
+          {!isRunning ? (
             <Button
               icon={<ExperimentOutlined />}
               style={{
@@ -317,113 +259,33 @@ export default function Results() {
               {isMobile ? "Run CV" : cvButtonLabel}
             </Button>
           ) : (
-            <Button
-              danger
-              icon={<StopOutlined />}
-              onClick={handleCancel}
-            >
+            <Button danger icon={<StopOutlined />} onClick={handleCancel}>
               Cancel Job
             </Button>
           )}
-          {!isSingle && isMobile ? (
-            <Dropdown
-              menu={{
-                items: [
-                  {
-                    key: "csv",
-                    icon: <DownloadOutlined />,
-                    label: (
-                      <a href={`${API_BASE_URL}/api/export/batch/${batchId}/csv?token=${localStorage.getItem("token")}`}>
-                        Export CSV
-                      </a>
-                    ),
-                  },
-                  {
-                    key: "excel",
-                    icon: <FileExcelOutlined />,
-                    label: (
-                      <a href={`${API_BASE_URL}/api/export/batch/${batchId}/excel?token=${localStorage.getItem("token")}`}>
-                        Export Excel
-                      </a>
-                    ),
-                  },
-                  ...(user?.role === "admin"
-                    ? [
-                        {
-                          key: "images",
-                          icon: <FileImageOutlined />,
-                          label: (
-                            <a href={`${API_BASE_URL}/api/export/batch/${batchId}/images?token=${localStorage.getItem("token")}`}>
-                              Export Images
-                            </a>
-                          ),
-                        },
-                      ]
-                    : []),
-                  {
-                    key: "stats",
-                    icon: <BarChartOutlined />,
-                    label: <Link to={`/stats?batch=${batchId}`}>View Statistics</Link>,
-                  },
-                ],
-              }}
-              placement="bottomRight"
-            >
-              <Button icon={<EllipsisOutlined />} size="small">More</Button>
-            </Dropdown>
-          ) : !isSingle ? (
-            <>
-              <Button
-                icon={<DownloadOutlined />}
-                href={`${API_BASE_URL}/api/export/batch/${batchId}/csv?token=${localStorage.getItem("token")}`}
-                style={{ background: "#718096", borderColor: "#718096", color: "#fff" }}
-              >
-                Export CSV
-              </Button>
-              <Button
-                icon={<FileExcelOutlined />}
-                href={`${API_BASE_URL}/api/export/batch/${batchId}/excel?token=${localStorage.getItem("token")}`}
-                style={{ background: "#276749", borderColor: "#276749", color: "#fff" }}
-              >
-                Export Excel
-              </Button>
-              {user?.role === "admin" && (
-                <Button
-                  icon={<FileImageOutlined />}
-                  href={`${API_BASE_URL}/api/export/batch/${batchId}/images?token=${localStorage.getItem("token")}`}
-                  style={{ background: "#2b6cb0", borderColor: "#2b6cb0", color: "#fff" }}
-                >
-                  Export Images
-                </Button>
-              )}
-              <Link to={`/stats?batch=${batchId}`}>
-                <Button icon={<BarChartOutlined />}>View Statistics</Button>
-              </Link>
-            </>
-          ) : null}
+          <Link to="/history">
+            <Button icon={<ArrowLeftOutlined />} size={isMobile ? "small" : "middle"}>
+              History
+            </Button>
+          </Link>
           <Link to="/upload">
-            <Button icon={<PlusOutlined />} size={isMobile ? "small" : "middle"}>
+            <Button
+              icon={<PlusOutlined />}
+              type="primary"
+              size={isMobile ? "small" : "middle"}
+            >
               New Test
             </Button>
           </Link>
         </Space>
       </div>
 
-      {/* Classification status banner */}
-      {classifyStatus === "running" && (
+      {isRunning && (
         <Alert
           type="warning"
           showIcon
           icon={<SyncOutlined spin />}
-          message={`CV classification... ${classifyProgress.toFixed(0)}%`}
-          description={
-            <Progress
-              percent={parseFloat(classifyProgress.toFixed(0))}
-              strokeColor="#d69e2e"
-              size="small"
-              style={{ marginTop: 8 }}
-            />
-          }
+          message="CV classification running..."
           style={{ marginBottom: 24 }}
         />
       )}
@@ -437,214 +299,160 @@ export default function Results() {
         />
       )}
 
-      {/* Image grid */}
-      <Row gutter={[20, 20]}>
-        {batch.images.map((image) => (
-          <Col key={image.id} xs={24} sm={12} md={8} lg={6}>
-            <Card
-              cover={
-                <div
-                  style={{
-                    aspectRatio: image.is_preprocessed && !showOriginal[image.id] ? "2 / 1" : "3 / 4",
-                    background: "#f7fafc",
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    overflow: "hidden",
-                    position: "relative",
-                  }}
-                >
-                  <img
-                    src={getImageUrl(image.id, showOriginal[image.id])}
-                    alt={image.original_filename}
-                    loading="lazy"
-                    style={{
-                      maxWidth: "100%",
-                      maxHeight: "100%",
-                      objectFit: "contain",
-                    }}
-                  />
-                  {image.is_preprocessed && (
-                    <Button
-                      type="text"
-                      size="small"
-                      onClick={() => toggleOriginal(image.id)}
-                      style={{
-                        position: "absolute",
-                        bottom: 4,
-                        right: 4,
-                        fontSize: 11,
-                        color: "#718096",
-                        background: "rgba(255,255,255,0.85)",
-                        padding: "2px 8px",
-                        height: "auto",
-                        lineHeight: "18px",
-                      }}
-                    >
-                      {showOriginal[image.id] ? "Show Processed" : "Show Original"}
-                    </Button>
-                  )}
-                </div>
-              }
-              styles={{ body: { padding: 16 } }}
+      <Card styles={{ body: { padding: 16 } }}>
+        <div
+          style={{
+            aspectRatio: image.is_preprocessed && !showOriginal ? "2 / 1" : "3 / 4",
+            background: "#f7fafc",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            overflow: "hidden",
+            position: "relative",
+            borderRadius: 8,
+            marginBottom: 16,
+          }}
+        >
+          <img
+            src={buildImageFileUrl(image.id, showOriginal)}
+            alt={image.original_filename}
+            loading="lazy"
+            style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }}
+          />
+          {image.is_preprocessed && (
+            <Button
+              type="text"
+              size="small"
+              onClick={() => setShowOriginal((v) => !v)}
+              style={{
+                position: "absolute",
+                bottom: 8,
+                right: 8,
+                fontSize: 12,
+                color: "#718096",
+                background: "rgba(255,255,255,0.85)",
+                padding: "2px 10px",
+                height: "auto",
+                lineHeight: "20px",
+              }}
             >
-              <Text
-                type="secondary"
-                ellipsis
-                style={{
-                  display: "block",
-                  fontSize: 13,
-                  marginBottom: 12,
-                }}
-              >
-                {image.original_filename}
-              </Text>
+              {showOriginal ? "Show Processed" : "Show Original"}
+            </Button>
+          )}
+        </div>
 
-              {/* CV Reading */}
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  marginBottom: 8,
-                }}
-              >
-                <Text type="secondary" style={{ fontSize: 14 }}>
-                  CV Reading:
-                </Text>
-                {renderCvTag(image)}
-              </div>
+        <Text type="secondary" ellipsis style={{ display: "block", fontSize: 13, marginBottom: 16 }}>
+          {image.original_filename}
+        </Text>
 
-              {/* Manual correction */}
-              {image.manual_correction && (
-                <div
-                  style={{
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    marginBottom: 8,
-                  }}
-                >
-                  <Text type="secondary" style={{ fontSize: 14 }}>
-                    Corrected:
-                  </Text>
-                  <Tag color="green">{image.manual_correction}</Tag>
-                </div>
-              )}
-
-              {/* Patient Info (collapsible) */}
-              {image.patient_info && (
-                <Collapse
-                  ghost
-                  size="small"
-                  items={[
-                    {
-                      key: "patient",
-                      label: (
-                        <Text strong style={{ fontSize: 13 }}>
-                          Patient Info
-                        </Text>
-                      ),
-                      children: (
-                        <div>
-                          {PATIENT_FIELDS.map(
-                            ({ key, label }) =>
-                              image.patient_info[key] && (
-                                <div
-                                  key={key}
-                                  style={{
-                                    display: "flex",
-                                    justifyContent: "space-between",
-                                    padding: "4px 0",
-                                    fontSize: 13,
-                                  }}
-                                >
-                                  <Text type="secondary">{label}:</Text>
-                                  <Text strong>
-                                    {image.patient_info[key]}
-                                  </Text>
-                                </div>
-                              )
-                          )}
-                        </div>
-                      ),
-                    },
-                  ]}
-                  style={{ marginTop: 4, marginBottom: 4 }}
-                />
-              )}
-
-              {/* Inline editing */}
-              {editingId === image.id ? (
-                <div style={{ marginTop: 8 }}>
-                  <Select
-                    value={correctionValue || undefined}
-                    onChange={setCorrectionValue}
-                    placeholder="Select category"
-                    options={CATEGORIES.map((cat) => ({
-                      value: cat,
-                      label: cat,
-                    }))}
-                    style={{ width: "100%", marginBottom: 8 }}
-                  />
-                  <Space style={{ width: "100%" }}>
-                    <Button
-                      type="primary"
-                      icon={<SaveOutlined />}
-                      loading={saving}
-                      disabled={!correctionValue}
-                      onClick={() => saveCorrection(image.id)}
-                      block
-                    >
-                      Save
-                    </Button>
-                    <Button
-                      icon={<CloseOutlined />}
-                      disabled={saving}
-                      onClick={cancelEdit}
-                      block
-                    >
-                      Cancel
-                    </Button>
-                  </Space>
-                </div>
+        <Descriptions
+          column={1}
+          size="small"
+          style={{ marginBottom: 16 }}
+          items={[
+            {
+              key: "cv",
+              label: "CV Reading",
+              children: image.cv_result ? (
+                <Tag color="green">{image.cv_result}</Tag>
               ) : (
-                <>
-                  <Button
-                    block
-                    icon={<EditOutlined />}
-                    onClick={() => startEdit(image)}
-                    style={{ marginTop: 8 }}
-                  >
-                    {image.manual_correction
-                      ? "Edit Correction"
-                      : "Manual Correct"}
-                  </Button>
-                  {image.cv_result && (
-                    <Button
-                      block
-                      size="small"
-                      icon={<CheckOutlined />}
-                      loading={saving}
-                      onClick={() => approveResult(image.id, image.cv_result)}
-                      style={{
-                        marginTop: 6,
-                        background: "#276749",
-                        borderColor: "#276749",
-                        color: "#fff",
-                        fontSize: 12,
-                      }}
-                    >
-                      Approve CV
-                    </Button>
-                  )}
-                </>
-              )}
-            </Card>
-          </Col>
-        ))}
-      </Row>
+                <Tag color="gold">Pending</Tag>
+              ),
+            },
+            ...(image.manual_correction
+              ? [
+                  {
+                    key: "manual",
+                    label: "Corrected",
+                    children: <Tag color="green">{image.manual_correction}</Tag>,
+                  },
+                ]
+              : []),
+          ]}
+        />
+
+        {image.patient_info && (
+          <Collapse
+            ghost
+            size="small"
+            items={[
+              {
+                key: "patient",
+                label: <Text strong style={{ fontSize: 13 }}>Patient Info</Text>,
+                children: (
+                  <div>
+                    {PATIENT_FIELDS.map(({ key, label }) =>
+                      image.patient_info[key] ? (
+                        <div
+                          key={key}
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            padding: "4px 0",
+                            fontSize: 13,
+                          }}
+                        >
+                          <Text type="secondary">{label}:</Text>
+                          <Text strong>{image.patient_info[key]}</Text>
+                        </div>
+                      ) : null
+                    )}
+                  </div>
+                ),
+              },
+            ]}
+            style={{ marginBottom: 16 }}
+          />
+        )}
+
+        {editing ? (
+          <div style={{ marginTop: 8 }}>
+            <Select
+              value={correctionValue || undefined}
+              onChange={setCorrectionValue}
+              placeholder="Select category"
+              options={CATEGORIES.map((cat) => ({ value: cat, label: cat }))}
+              style={{ width: "100%", marginBottom: 8 }}
+            />
+            <Space style={{ width: "100%" }}>
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                loading={saving}
+                disabled={!correctionValue}
+                onClick={saveCorrection}
+                block
+              >
+                Save
+              </Button>
+              <Button icon={<CloseOutlined />} disabled={saving} onClick={cancelEdit} block>
+                Cancel
+              </Button>
+            </Space>
+          </div>
+        ) : (
+          <Space direction="vertical" style={{ width: "100%" }}>
+            <Button block icon={<EditOutlined />} onClick={startEdit}>
+              {image.manual_correction ? "Edit Correction" : "Manual Correct"}
+            </Button>
+            {image.cv_result && image.cv_result !== image.manual_correction && (
+              <Button
+                block
+                icon={<CheckOutlined />}
+                loading={saving}
+                onClick={approveResult}
+                style={{
+                  background: "#276749",
+                  borderColor: "#276749",
+                  color: "#fff",
+                }}
+              >
+                Approve CV Result
+              </Button>
+            )}
+          </Space>
+        )}
+      </Card>
     </div>
   );
 }

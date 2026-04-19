@@ -21,7 +21,6 @@ const pathToKey = {
   "/upload": "upload",
   "/history": "history",
   "/results": "results",
-  "/stats": "stats",
   "/analytics": "analytics",
   "/users": "users",
 };

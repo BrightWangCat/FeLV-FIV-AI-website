@@ -28,36 +28,6 @@ class TokenData(BaseModel):
     user_id: int | None = None
 
 
-class ImageResponse(BaseModel):
-    id: int
-    batch_id: int
-    original_filename: str
-    stored_filename: str
-    file_size: int
-    is_preprocessed: bool = False
-    cv_result: str | None = None
-    cv_confidence: str | None = None
-    manual_correction: str | None
-    patient_info: Optional["PatientInfoResponse"] = None
-    created_at: datetime
-
-    model_config = {"from_attributes": True}
-
-
-class BatchResponse(BaseModel):
-    id: int
-    user_id: int
-    name: str | None
-    total_images: int
-    created_at: datetime
-    reading_status: str | None = None
-    classification_model: str | None = None
-    reading_error: str | None = None
-    images: list[ImageResponse] = []
-
-    model_config = {"from_attributes": True}
-
-
 class PatientInfoCreate(BaseModel):
     species: Optional[str] = None
     age: Optional[str] = None
@@ -101,13 +71,34 @@ class PatientSummary(BaseModel):
     sex_distribution: dict
 
 
-class BatchListResponse(BaseModel):
+class ImageResponse(BaseModel):
+    """Detail view of an image, including patient info if present."""
     id: int
     user_id: int
-    name: str | None
-    total_images: int
+    original_filename: str
+    stored_filename: str
+    file_size: int
+    is_preprocessed: bool = False
+    cv_result: str | None = None
+    cv_confidence: str | None = None
+    manual_correction: str | None = None
+    reading_status: str | None = None
+    reading_error: str | None = None
+    patient_info: Optional[PatientInfoResponse] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class ImageListItem(BaseModel):
+    """Compact list item for the History page."""
+    id: int
+    user_id: int
+    original_filename: str
+    cv_result: str | None = None
+    manual_correction: str | None = None
+    reading_status: str | None = None
     created_at: datetime
     username: str | None = None
-    reading_status: str | None = None
 
     model_config = {"from_attributes": True}

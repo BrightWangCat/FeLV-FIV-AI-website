@@ -8,7 +8,6 @@ import Register from "./pages/Register";
 import UploadPage from "./pages/Upload";
 import Results from "./pages/Results";
 import History from "./pages/History";
-import Stats from "./pages/Stats";
 import UserManagement from "./pages/UserManagement";
 import Statistics from "./pages/Statistics";
 import CameraCapture from "./components/CameraCapture";
@@ -58,14 +57,6 @@ function App() {
                 element={
                   <ProtectedRoute>
                     <Layout><History /></Layout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/stats"
-                element={
-                  <ProtectedRoute>
-                    <Layout><Stats /></Layout>
                   </ProtectedRoute>
                 }
               />

@@ -1,15 +1,14 @@
 import os
 import shutil
 import uuid
-from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session, joinedload
 from typing import Optional
 from app.database import get_db
-from app.models import User, UploadBatch, Image, PatientInfo
-from app.schemas import BatchResponse, BatchListResponse, PatientInfoResponse
-from app.auth import get_current_user, require_admin, require_batch_or_admin
+from app.models import User, Image, PatientInfo
+from app.schemas import ImageResponse, ImageListItem, PatientInfoResponse
+from app.auth import get_current_user
 from app.config import UPLOAD_DIR
 from app.services.cv_inference import cancel_classification
 from app.services.image_preprocessor import preprocess_cassette, PreprocessingError
@@ -29,7 +28,7 @@ def validate_image(file: UploadFile) -> None:
         )
 
 
-@router.post("/single", status_code=status.HTTP_201_CREATED)
+@router.post("/single", response_model=ImageResponse, status_code=status.HTTP_201_CREATED)
 async def upload_single(
     file: UploadFile = File(...),
     share_info: bool = Form(False),
@@ -42,10 +41,8 @@ async def upload_single(
     db: Session = Depends(get_db),
 ):
     """Upload a single image with optional patient info."""
-    # Validate file type
     validate_image(file)
 
-    # Read and validate file size
     content = await file.read()
     if len(content) > MAX_FILE_SIZE:
         raise HTTPException(
@@ -53,63 +50,50 @@ async def upload_single(
             detail=f"File '{file.filename}' exceeds maximum size of 20MB",
         )
 
-    # Auto-generate batch name
-    now = datetime.now()
-    batch_name = now.strftime("Single_%Y%m%d_%H%M%S")
-
-    # Create batch record
-    batch = UploadBatch(
+    # Allocate the image row first to obtain its id, which becomes part of
+    # the on-disk path (uploads/{user_id}/{image_id}/...).
+    image = Image(
         user_id=current_user.id,
-        name=batch_name,
-        total_images=1,
+        original_filename=file.filename,
+        stored_filename="",  # filled in after we have the id
+        file_path="",
+        file_size=len(content),
+        is_preprocessed=False,
     )
-    db.add(batch)
+    db.add(image)
     db.flush()
 
-    # Save file to disk
-    batch_dir = os.path.join(UPLOAD_DIR, str(current_user.id), str(batch.id))
-    os.makedirs(batch_dir, exist_ok=True)
+    image_dir = os.path.join(UPLOAD_DIR, str(current_user.id), str(image.id))
+    os.makedirs(image_dir, exist_ok=True)
 
     ext = os.path.splitext(file.filename)[1].lower()
     stored_name = f"{uuid.uuid4().hex}{ext}"
-    file_path = os.path.join(batch_dir, stored_name)
+    file_path = os.path.join(image_dir, stored_name)
 
     with open(file_path, "wb") as out:
         out.write(content)
 
-    # Preprocess: detect cassette, crop, rotate, resize
+    # Preprocess (detect cassette, crop, rotate, resize) so the user can see
+    # a normalized thumbnail immediately. Failure rejects the upload outright.
     preprocessed_name = f"pp_{stored_name}"
-    preprocessed_path = os.path.join(batch_dir, preprocessed_name)
+    preprocessed_path = os.path.join(image_dir, preprocessed_name)
     try:
         preprocess_cassette(file_path, preprocessed_path)
     except PreprocessingError as e:
-        # Preprocessing failed: clean up files and reject upload
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        if os.path.exists(preprocessed_path):
-            os.remove(preprocessed_path)
+        if os.path.exists(image_dir):
+            shutil.rmtree(image_dir)
         db.rollback()
         raise HTTPException(
             status_code=400,
             detail=f"Image preprocessing failed: {str(e)}",
         )
 
-    # Create image record (with both original and preprocessed paths)
-    image = Image(
-        batch_id=batch.id,
-        original_filename=file.filename,
-        stored_filename=stored_name,
-        file_path=file_path,
-        file_size=len(content),
-        preprocessed_filename=preprocessed_name,
-        preprocessed_path=preprocessed_path,
-        is_preprocessed=True,
-    )
-    db.add(image)
-    db.flush()
+    image.stored_filename = stored_name
+    image.file_path = file_path
+    image.preprocessed_filename = preprocessed_name
+    image.preprocessed_path = preprocessed_path
+    image.is_preprocessed = True
 
-    # Create patient info if sharing
-    patient_info_response = None
     if share_info:
         if sex is not None and sex not in ("M", "F", "CM", "SF"):
             db.rollback()
@@ -127,205 +111,114 @@ async def upload_single(
             zip_code=zip_code,
         )
         db.add(patient)
-        db.flush()
-        patient_info_response = PatientInfoResponse.model_validate(patient)
 
     db.commit()
-
-    result = {
-        "batch_id": batch.id,
-        "image_id": image.id,
-    }
-    if patient_info_response:
-        result["patient_info"] = patient_info_response.model_dump()
-    else:
-        result["patient_info"] = None
-
-    return result
+    db.refresh(image)
+    return image
 
 
-@router.post("/batch", response_model=BatchResponse, status_code=status.HTTP_201_CREATED)
-async def upload_batch(
-    files: list[UploadFile] = File(...),
-    batch_name: Optional[str] = Form(None),
-    current_user: User = Depends(require_batch_or_admin),
-    db: Session = Depends(get_db),
-):
-    """Upload one or more images as a batch. Requires batch or admin role."""
-    if not files:
-        raise HTTPException(status_code=400, detail="No files provided")
-
-    # Validate all files first
-    for f in files:
-        validate_image(f)
-
-    # Create batch record
-    batch = UploadBatch(
-        user_id=current_user.id,
-        name=batch_name,
-        total_images=len(files),
-    )
-    db.add(batch)
-    db.flush()  # Get batch.id without committing
-
-    # Create user-specific upload directory
-    user_dir = os.path.join(UPLOAD_DIR, str(current_user.id))
-    batch_dir = os.path.join(user_dir, str(batch.id))
-    os.makedirs(batch_dir, exist_ok=True)
-
-    # Save files and preprocess each one
-    for f in files:
-        content = await f.read()
-
-        if len(content) > MAX_FILE_SIZE:
-            # Clean up already-saved files
-            if os.path.exists(batch_dir):
-                shutil.rmtree(batch_dir)
-            db.rollback()
-            raise HTTPException(
-                status_code=400,
-                detail=f"File '{f.filename}' exceeds maximum size of 20MB",
-            )
-
-        ext = os.path.splitext(f.filename)[1].lower()
-        stored_name = f"{uuid.uuid4().hex}{ext}"
-        file_path = os.path.join(batch_dir, stored_name)
-
-        with open(file_path, "wb") as out:
-            out.write(content)
-
-        # Preprocess: detect cassette, crop, rotate, resize
-        preprocessed_name = f"pp_{stored_name}"
-        preprocessed_path = os.path.join(batch_dir, preprocessed_name)
-        try:
-            preprocess_cassette(file_path, preprocessed_path)
-        except PreprocessingError as e:
-            # Preprocessing failed: clean up entire batch and reject
-            if os.path.exists(batch_dir):
-                shutil.rmtree(batch_dir)
-            db.rollback()
-            raise HTTPException(
-                status_code=400,
-                detail=(
-                    f"Preprocessing failed for '{f.filename}': {str(e)}. "
-                    "All images must contain clearly visible FeLV/FIV test cassettes."
-                ),
-            )
-
-        image = Image(
-            batch_id=batch.id,
-            original_filename=f.filename,
-            stored_filename=stored_name,
-            file_path=file_path,
-            file_size=len(content),
-            preprocessed_filename=preprocessed_name,
-            preprocessed_path=preprocessed_path,
-            is_preprocessed=True,
-        )
-        db.add(image)
-
-    db.commit()
-    db.refresh(batch)
-    return batch
-
-
-@router.get("/batches", response_model=list[BatchListResponse])
-def list_batches(
+@router.get("/images", response_model=list[ImageListItem])
+def list_images(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """List batches. Admin sees all batches; regular users see only their own."""
-    query = db.query(UploadBatch)
-    if not current_user.role == "admin":
-        query = query.filter(UploadBatch.user_id == current_user.id)
-    batches = query.order_by(UploadBatch.created_at.desc()).all()
+    """List images. Admin sees everyone's; regular users see only their own."""
+    query = db.query(Image)
+    if current_user.role != "admin":
+        query = query.filter(Image.user_id == current_user.id)
+    images = query.order_by(Image.created_at.desc()).all()
+
+    # Pre-fetch usernames to fill in admin's cross-user view.
+    if current_user.role == "admin":
+        user_ids = {img.user_id for img in images}
+        username_map = {
+            u.id: u.username
+            for u in db.query(User).filter(User.id.in_(user_ids)).all()
+        }
+    else:
+        username_map = {current_user.id: current_user.username}
 
     result = []
-    for batch in batches:
-        data = BatchListResponse.model_validate(batch)
-        # Fill in the username for display
-        if batch.user_id == current_user.id:
-            data.username = current_user.username
-        else:
-            owner = db.query(User).filter(User.id == batch.user_id).first()
-            data.username = owner.username if owner else "Unknown"
-        result.append(data)
+    for img in images:
+        item = ImageListItem.model_validate(img)
+        item.username = username_map.get(img.user_id, "Unknown")
+        result.append(item)
     return result
 
 
-@router.get("/batch/{batch_id}", response_model=BatchResponse)
-def get_batch(
-    batch_id: int,
+@router.get("/image/{image_id}", response_model=ImageResponse)
+def get_image_detail(
+    image_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Get a specific batch with all its images. Admin can access any batch."""
+    """Get a single image with its patient info. Admin can access any image."""
     query = (
-        db.query(UploadBatch)
-        .options(joinedload(UploadBatch.images).joinedload(Image.patient_info))
-        .filter(UploadBatch.id == batch_id)
+        db.query(Image)
+        .options(joinedload(Image.patient_info))
+        .filter(Image.id == image_id)
     )
-    if not current_user.role == "admin":
-        query = query.filter(UploadBatch.user_id == current_user.id)
-    batch = query.first()
-    if not batch:
-        raise HTTPException(status_code=404, detail="Batch not found")
-    return batch
+    if current_user.role != "admin":
+        query = query.filter(Image.user_id == current_user.id)
+    image = query.first()
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
+    return image
 
 
-@router.delete("/batch/{batch_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_batch(
-    batch_id: int,
+@router.delete("/image/{image_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_image(
+    image_id: int,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Delete a batch and all its images. Admin can delete any batch."""
-    query = db.query(UploadBatch).filter(UploadBatch.id == batch_id)
-    if not current_user.role == "admin":
-        query = query.filter(UploadBatch.user_id == current_user.id)
-    batch = query.first()
-    if not batch:
-        raise HTTPException(status_code=404, detail="Batch not found")
+    """Delete an image and its files. Admin can delete any image."""
+    query = db.query(Image).filter(Image.id == image_id)
+    if current_user.role != "admin":
+        query = query.filter(Image.user_id == current_user.id)
+    image = query.first()
+    if not image:
+        raise HTTPException(status_code=404, detail="Image not found")
 
-    # Cancel any active classification task
-    if batch.reading_status == "running":
-        cancel_classification(batch.id)
+    # Cancel any active classification task before removing the row.
+    if image.reading_status == "running":
+        cancel_classification(image.id)
 
-    # Delete files from disk (both original and preprocessed images)
-    batch_dir = os.path.join(UPLOAD_DIR, str(batch.user_id), str(batch.id))
-    if os.path.exists(batch_dir):
-        shutil.rmtree(batch_dir)
+    # Remove the image's directory (file_path lives inside it). For new
+    # uploads this is uploads/{user_id}/{image_id}/. Legacy paths share
+    # a directory with batch siblings, so only remove the file itself
+    # to avoid taking other images down with it.
+    image_dir = os.path.join(UPLOAD_DIR, str(image.user_id), str(image.id))
+    if image.file_path and os.path.dirname(image.file_path) == image_dir:
+        if os.path.exists(image_dir):
+            shutil.rmtree(image_dir)
+    else:
+        for path in (image.file_path, image.preprocessed_path):
+            if path and os.path.exists(path):
+                try:
+                    os.remove(path)
+                except OSError:
+                    pass
 
-    db.delete(batch)
+    db.delete(image)
     db.commit()
 
 
-@router.get("/image/{image_id}")
+@router.get("/image/{image_id}/file")
 def get_image_file(
     image_id: int,
     original: bool = Query(False, description="Set to true to get the original unprocessed image"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    """Serve an uploaded image file.
-
-    By default serves the preprocessed version if available.
-    Pass ?original=true to get the original uploaded image.
-    """
+    """Serve an image file. By default returns the preprocessed version."""
     image = db.query(Image).filter(Image.id == image_id).first()
     if not image:
         raise HTTPException(status_code=404, detail="Image not found")
 
-    # Verify ownership (admin can access any image)
-    batch = db.query(UploadBatch).filter(
-        UploadBatch.id == image.batch_id,
-    ).first()
-    if not batch:
-        raise HTTPException(status_code=404, detail="Batch not found")
-    if not current_user.role == "admin" and batch.user_id != current_user.id:
+    if current_user.role != "admin" and image.user_id != current_user.id:
         raise HTTPException(status_code=403, detail="Access denied")
 
-    # Determine which file to serve: preprocessed by default, original if requested
     if (
         not original
         and image.is_preprocessed

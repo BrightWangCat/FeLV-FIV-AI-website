@@ -27,7 +27,7 @@ import cv2
 import numpy as np
 from sqlalchemy.orm import Session
 
-from app.models import UploadBatch, Image
+from app.models import Image
 from app.services.image_preprocessor import (
     _detect_cassette_contour,
     _straighten_and_crop,
@@ -99,26 +99,12 @@ I_OFFSET_FROM_C = 0.27
 # cross-zone overlap.
 BAND_ZONE_HALF_WIDTH = 0.07
 
-# Active classification tasks keyed by batch_id.
+# Active classification tasks keyed by image_id.
 _active_tasks: dict[int, dict] = {}
 
 
 def _preprocess_for_cv(file_path: str) -> np.ndarray:
-    """Read an image and extract the oriented cassette for CV analysis.
-
-    Reuses the contour detection, straightening, and orientation correction
-    from the LLM preprocessor.
-
-    Args:
-        file_path: Path to the original uploaded image.
-
-    Returns:
-        Landscape-oriented cassette image (BGR) with FeLV/FIV label
-        on the left and sample well on the right.
-
-    Raises:
-        PreprocessingError: If the cassette cannot be detected.
-    """
+    """Read an image and extract the oriented cassette for CV analysis."""
     img = cv2.imread(file_path)
     if img is None:
         raise PreprocessingError("Cannot read image file")
@@ -135,19 +121,7 @@ def _preprocess_for_cv(file_path: str) -> np.ndarray:
 
 
 def _extract_strip_region(cassette: np.ndarray) -> np.ndarray:
-    """Extract the test strip region from the cassette image.
-
-    Uses the reading window detection to find the strip opening area,
-    then crops to the lower portion containing the actual test bands.
-    This approach adapts to variations in cassette cropping, unlike
-    a fixed-ratio crop of the full cassette.
-
-    Args:
-        cassette: Landscape-oriented cassette image (BGR).
-
-    Returns:
-        Cropped strip region (BGR) containing the band area.
-    """
+    """Extract the test strip region from the cassette image."""
     window = _extract_reading_window(cassette)
     wh = window.shape[0]
     # The lower 45% of the reading window contains the test strip bands.
@@ -161,35 +135,12 @@ def _extract_strip_region(cassette: np.ndarray) -> np.ndarray:
 
 
 def detect_bands(strip_bgr: np.ndarray) -> dict:
-    """Detect colored bands using C-anchored dynamic zone positioning.
-
-    First locates the C (control) band by finding the strongest a-channel
-    peak in the search range. Then positions L and I zones at fixed offsets
-    from C, matching the physical band spacing on the test strip.
-
-    Within each zone, applies two-stage detection:
-      Stage 1 (sensitivity): p99 scoring on the a-channel.
-      Stage 2 (specificity): column profile prominence validation.
-
-    Args:
-        strip_bgr: BGR image of the strip region (lower portion of the
-            reading window, containing the visible test bands).
-
-    Returns:
-        Dict with keys:
-          "c", "l", "i": bool indicating band presence
-          "scores": {"c", "l", "i"}: float p99 scores (above background)
-          "prominences": {"c", "l", "i"}: float column profile prominences
-          "background_a": float, the median a-channel value
-          "thresholds": {"c", "l", "i"}: float, p99 thresholds used
-          "zones": {"c", "l", "i"}: (start, end) zone boundaries used
-    """
+    """Detect colored bands using C-anchored dynamic zone positioning."""
     lab = cv2.cvtColor(strip_bgr, cv2.COLOR_BGR2LAB)
     a_channel = lab[:, :, 1].astype(np.float32)
     _, rw = a_channel.shape
     background_a = float(np.median(a_channel))
 
-    # Compute smoothed column profile for C band localization
     col_profile = np.mean(a_channel, axis=0)
     col_smooth = cv2.GaussianBlur(
         col_profile.reshape(1, -1),
@@ -197,8 +148,6 @@ def detect_bands(strip_bgr: np.ndarray) -> dict:
         0,
     ).flatten()
 
-    # Locate C band: find the column with peak a-channel value
-    # within the search range, excluding edge artifacts from FIV label
     search_x1 = int(rw * C_SEARCH_START)
     search_x2 = int(rw * C_SEARCH_END)
     search_region = col_smooth[search_x1:search_x2]
@@ -211,7 +160,6 @@ def detect_bands(strip_bgr: np.ndarray) -> dict:
         c_peak_col, c_pos,
     )
 
-    # Compute dynamic zone boundaries based on C band position
     hw = BAND_ZONE_HALF_WIDTH
     zone_ranges = {
         "c": (max(c_pos - hw, 0.0), min(c_pos + hw, 1.0)),
@@ -221,7 +169,6 @@ def detect_bands(strip_bgr: np.ndarray) -> dict:
               min(c_pos + I_OFFSET_FROM_C + hw, 1.0)),
     }
 
-    # Stage 1: Zone p99 scoring
     zone_slices = {}
     for name, (start, end) in zone_ranges.items():
         zone_slices[name] = a_channel[:, int(rw * start):int(rw * end)]
@@ -235,7 +182,6 @@ def detect_bands(strip_bgr: np.ndarray) -> dict:
                 float(np.percentile(zone, 99)) - background_a, 2
             )
 
-    # Adaptive thresholds
     c_score = p99_scores["c"]
     li_threshold = max(c_score * ADAPTIVE_P99_RATIO, LI_P99_ABSOLUTE_MIN)
     thresholds = {
@@ -248,14 +194,7 @@ def detect_bands(strip_bgr: np.ndarray) -> dict:
     l_pass_p99 = p99_scores["l"] >= thresholds["l"]
     i_pass_p99 = p99_scores["i"] >= thresholds["i"]
 
-    # Stage 2: Column profile prominence validation
     def _zone_prominence(start_frac, end_frac):
-        """Compute the local peak prominence within a zone.
-
-        Prominence = peak value minus the higher of the two edge values.
-        A real band creates a sharp peak; spillover from neighbors
-        produces a monotonic slope with near-zero prominence.
-        """
         x1 = int(rw * start_frac)
         x2 = int(rw * end_frac)
         zone_profile = col_smooth[x1:x2]
@@ -270,16 +209,9 @@ def detect_bands(strip_bgr: np.ndarray) -> dict:
         "i": round(_zone_prominence(*zone_ranges["i"]), 2),
     }
 
-    # A zone is detected only if it passes BOTH p99 threshold AND
-    # column profile prominence check.
     l_detected = l_pass_p99 and prominences["l"] >= PROMINENCE_THRESHOLD
     i_detected = i_pass_p99 and prominences["i"] >= PROMINENCE_THRESHOLD
 
-    # Dual-band ratio validation: when both L and I are detected,
-    # verify that both have comparable prominences. A strong band in
-    # one zone can spill signal into the adjacent zone, producing a
-    # moderate prominence. If the weaker prominence is much less than
-    # the stronger, it is likely spillover and should be suppressed.
     if l_detected and i_detected:
         l_prom = prominences["l"]
         i_prom = prominences["i"]
@@ -322,22 +254,12 @@ def detect_bands(strip_bgr: np.ndarray) -> dict:
 
 
 def classify_from_bands(bands: dict) -> tuple[str, str]:
-    """Apply deterministic rules to band detection results.
-
-    Args:
-        bands: Dict from detect_bands() with "c", "l", "i" booleans
-               and "scores" dict.
-
-    Returns:
-        (category, confidence) tuple.
-    """
+    """Apply deterministic rules to band detection results."""
     c_present = bands["c"]
     l_present = bands["l"]
     i_present = bands["i"]
     scores = bands["scores"]
 
-    # Confidence based on the ratio of each detected band's p99 score
-    # to its threshold. A higher ratio means a clearer, more reliable signal.
     thresholds = bands.get("thresholds", {"c": C_LINE_P99_THRESHOLD, "l": 5.0, "i": 5.0})
     detected_ratios = []
     for k in ("c", "l", "i"):
@@ -355,7 +277,6 @@ def classify_from_bands(bands: dict) -> tuple[str, str]:
     else:
         confidence = "low"
 
-    # Classification rules
     if not c_present:
         return "Invalid", confidence
 
@@ -370,142 +291,113 @@ def classify_from_bands(bands: dict) -> tuple[str, str]:
 
 
 def classify_single_image(file_path: str) -> tuple[str, str]:
-    """Full CV classification pipeline for a single image.
-
-    Args:
-        file_path: Path to the original uploaded image.
-
-    Returns:
-        (category, confidence) tuple.
-    """
+    """Full CV classification pipeline for a single image."""
     cassette = _preprocess_for_cv(file_path)
     strip = _extract_strip_region(cassette)
     bands = detect_bands(strip)
     return classify_from_bands(bands)
 
 
-def classify_batch(batch_id: int, db_factory) -> None:
-    """Run CV classification for all images in a batch.
+def classify_image(image_id: int, db_factory) -> None:
+    """Run CV classification for a single image in a background thread.
 
-    Intended to run in a background thread. Processes images sequentially,
-    updating the database after each image so the frontend can show
-    real-time progress via status polling.
-
-    Args:
-        batch_id: The ID of the UploadBatch to classify.
-        db_factory: A SQLAlchemy sessionmaker to create a thread-local session.
+    Updates reading_status / cv_result / cv_confidence on the Image row.
+    Honors the cooperative cancellation flag set by cancel_classification().
     """
     db: Session = db_factory()
     try:
-        batch = db.query(UploadBatch).filter(
-            UploadBatch.id == batch_id
-        ).first()
-        if not batch:
+        image = db.query(Image).filter(Image.id == image_id).first()
+        if not image:
             return
 
-        batch.reading_status = "running"
-        batch.classification_model = "cv"
-        batch.reading_error = None
+        image.reading_status = "running"
+        image.reading_error = None
         db.commit()
 
-        images = db.query(Image).filter(Image.batch_id == batch_id).all()
-        total = len(images)
-
-        for idx, img in enumerate(images, 1):
-            # Check cooperative cancellation flag
-            task_info = _active_tasks.get(batch_id)
-            if task_info and task_info.get("cancel"):
-                print(f"[CV] Batch {batch_id} cancelled at image {idx}/{total}")
-                batch.reading_status = None
-                batch.reading_error = None
-                db.commit()
-                return
-
-            print(f"[CV] [{idx}/{total}] Processing: {img.original_filename}")
-
-            if not os.path.exists(img.file_path):
-                print(f"[CV] [{idx}/{total}] File not found: {img.file_path}")
-                img.cv_result = "Invalid"
-                img.cv_confidence = "low"
-                db.commit()
-                continue
-
-            # Re-run preprocessing to regenerate the display thumbnail.
-            # This ensures the preprocessed image reflects the latest
-            # detection algorithm, not just the version at upload time.
-            if img.preprocessed_path:
-                try:
-                    preprocess_cassette(img.file_path, img.preprocessed_path)
-                    img.is_preprocessed = True
-                    print(f"[CV] [{idx}/{total}] Preprocessed: OK")
-                except PreprocessingError as e:
-                    print(f"[CV] [{idx}/{total}] Preprocess warning: {e}")
-                except Exception as e:
-                    print(f"[CV] [{idx}/{total}] Preprocess warning: {e}")
-
-            # Run CV classification on the original image
-            try:
-                category, confidence = classify_single_image(img.file_path)
-                img.cv_result = category
-                img.cv_confidence = confidence
-                print(f"[CV] [{idx}/{total}] Result: {category} ({confidence})")
-            except PreprocessingError as e:
-                print(f"[CV] [{idx}/{total}] Classification failed: {e}")
-                img.cv_result = "Invalid"
-                img.cv_confidence = "low"
-            except Exception as e:
-                print(f"[CV] [{idx}/{total}] Error: {e}")
-                img.cv_result = "Invalid"
-                img.cv_confidence = "low"
-
+        # Cancellation check before doing any heavy work.
+        task_info = _active_tasks.get(image_id)
+        if task_info and task_info.get("cancel"):
+            print(f"[CV] Image {image_id} cancelled before processing")
+            image.reading_status = None
+            image.reading_error = None
             db.commit()
+            return
 
-        # Mark batch as completed
-        batch.reading_status = "completed"
-        batch.reading_error = None
+        if not os.path.exists(image.file_path):
+            print(f"[CV] Image {image_id}: file not found {image.file_path}")
+            image.cv_result = "Invalid"
+            image.cv_confidence = "low"
+            image.reading_status = "completed"
+            db.commit()
+            return
+
+        # Re-run preprocessing so the displayed thumbnail reflects the
+        # latest detection algorithm rather than the version saved at upload.
+        if image.preprocessed_path:
+            try:
+                preprocess_cassette(image.file_path, image.preprocessed_path)
+                image.is_preprocessed = True
+            except PreprocessingError as e:
+                print(f"[CV] Image {image_id} preprocess warning: {e}")
+            except Exception as e:
+                print(f"[CV] Image {image_id} preprocess warning: {e}")
+
+        try:
+            category, confidence = classify_single_image(image.file_path)
+            image.cv_result = category
+            image.cv_confidence = confidence
+            print(f"[CV] Image {image_id} result: {category} ({confidence})")
+        except PreprocessingError as e:
+            print(f"[CV] Image {image_id} classification failed: {e}")
+            image.cv_result = "Invalid"
+            image.cv_confidence = "low"
+        except Exception as e:
+            print(f"[CV] Image {image_id} error: {e}")
+            image.cv_result = "Invalid"
+            image.cv_confidence = "low"
+
+        image.reading_status = "completed"
+        image.reading_error = None
         db.commit()
-        print(f"[CV] Batch {batch_id} completed: {total} images processed")
 
     except Exception as e:
         error_msg = f"CV classification error: {str(e)}"
-        print(f"[CV] FATAL ERROR for batch {batch_id}: {error_msg}")
+        print(f"[CV] FATAL ERROR for image {image_id}: {error_msg}")
         traceback.print_exc()
         try:
-            batch = db.query(UploadBatch).filter(
-                UploadBatch.id == batch_id
-            ).first()
-            if batch:
-                batch.reading_status = "failed"
-                batch.reading_error = error_msg[:500]
+            image = db.query(Image).filter(Image.id == image_id).first()
+            if image:
+                image.reading_status = "failed"
+                image.reading_error = error_msg[:500]
                 db.commit()
         except Exception:
             pass
     finally:
-        _active_tasks.pop(batch_id, None)
+        _active_tasks.pop(image_id, None)
         db.close()
 
 
-def start_classification(batch_id: int, db_factory) -> None:
+def start_classification(image_id: int, db_factory) -> None:
     """Launch CV classification in a background thread."""
     task_info = {"cancel": False}
-    _active_tasks[batch_id] = task_info
+    _active_tasks[image_id] = task_info
     thread = threading.Thread(
-        target=classify_batch,
-        args=(batch_id, db_factory),
+        target=classify_image,
+        args=(image_id, db_factory),
         daemon=True,
     )
     thread.start()
 
 
-def cancel_classification(batch_id: int) -> bool:
+def cancel_classification(image_id: int) -> bool:
     """Request cancellation of an active CV classification task."""
-    task_info = _active_tasks.get(batch_id)
+    task_info = _active_tasks.get(image_id)
     if task_info is not None:
         task_info["cancel"] = True
         return True
     return False
 
 
-def is_task_active(batch_id: int) -> bool:
+def is_task_active(image_id: int) -> bool:
     """Check whether a CV classification task is currently running."""
-    return batch_id in _active_tasks
+    return image_id in _active_tasks

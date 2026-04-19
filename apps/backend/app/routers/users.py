@@ -6,7 +6,7 @@ from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models import User, UploadBatch
+from app.models import User, Image
 from app.schemas import UserCreate, UserResponse, Token
 from app.auth import (
     hash_password, verify_password, create_access_token,
@@ -72,10 +72,9 @@ def set_user_role(
 ):
     """Set the role for a user. Admin only.
 
-    Valid roles: single, batch, admin.
-    Cannot change your own role.
+    Valid roles: single, admin. Cannot change your own role.
     """
-    valid_roles = ("single", "batch", "admin")
+    valid_roles = ("single", "admin")
     if body.role not in valid_roles:
         raise HTTPException(
             status_code=400,
@@ -117,19 +116,15 @@ def delete_user(
     if not target:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Delete all batches owned by the user (cascade deletes images and patient info)
     from app.config import UPLOAD_DIR
 
-    batches = db.query(UploadBatch).filter(
-        UploadBatch.user_id == user_id
-    ).all()
-    for batch in batches:
-        batch_dir = os.path.join(UPLOAD_DIR, str(user_id), str(batch.id))
-        if os.path.exists(batch_dir):
-            shutil.rmtree(batch_dir)
-        db.delete(batch)
+    # Delete every image owned by the user (cascade removes patient_info).
+    images = db.query(Image).filter(Image.user_id == user_id).all()
+    for img in images:
+        db.delete(img)
 
-    # Remove the user's upload directory if it still exists
+    # Wipe the user's entire upload directory (covers both new
+    # uploads/{user_id}/{image_id}/ paths and legacy batch-prefixed paths).
     user_dir = os.path.join(UPLOAD_DIR, str(user_id))
     if os.path.exists(user_dir):
         shutil.rmtree(user_dir)

@@ -12,14 +12,11 @@ An automated reading and classification system for **FeLV/FIV lateral flow assay
 | Photo library upload | ✅ | ✅ |
 | OpenCV classification (LAB color-space analysis) | ✅ | ✅ |
 | Automatic image preprocessing | ✅ | ✅ |
-| Batch upload (multiple images) | ✅ | — |
 | Manual correction override | ✅ | ✅ |
 | Patient metadata (species, age, sex, breed, zip code) | ✅ | ✅ |
 | Statistics dashboard | ✅ | ✅ |
 | Zip code geographic heatmap | ✅ | ✅ |
-| CSV / Excel export | ✅ | — |
 | Admin user management | ✅ | — |
-| Pull-to-refresh & offline batch caching | — | ✅ |
 
 ### Classification Categories
 
@@ -132,14 +129,16 @@ xcodebuild -project apps/ios/LFAReader.xcodeproj -scheme LFAReader \
 |----------|-------------|
 | `POST /api/users/register` | Register new user |
 | `POST /api/users/login` | Login (returns JWT) |
-| `POST /api/upload/single` | Upload single image + patient info |
-| `POST /api/upload/batch` | Upload multiple images |
-| `GET /api/upload/batches` | List user's batches |
-| `POST /api/readings/batch/{id}/classify` | Start CV classification |
-| `GET /api/readings/batch/{id}/status` | Poll classification progress |
+| `POST /api/upload/single` | Upload a single image with optional patient info |
+| `GET /api/upload/images` | List own images (admin sees all) |
+| `GET /api/upload/image/{id}` | Image detail with patient info |
+| `DELETE /api/upload/image/{id}` | Delete an image and its files |
+| `GET /api/upload/image/{id}/file` | Serve the image file (preprocessed by default) |
+| `POST /api/readings/image/{id}/classify` | Start CV classification on an image |
+| `GET /api/readings/image/{id}/status` | Poll classification status |
+| `POST /api/readings/image/{id}/cancel` | Cancel a running classification |
 | `PUT /api/readings/image/{id}/correct` | Manual correction |
 | `GET /api/stats/global` | Global statistics |
-| `GET /api/export/batch/{id}/csv` | Export results as CSV |
 
 Full API documentation is available at `/docs` (Swagger UI) when the backend is running.
 
@@ -157,9 +156,8 @@ The classification engine uses a deterministic two-stage approach (no ML model r
 
 | Role | Permissions |
 |------|------------|
-| `single` | Single image upload, view own results |
-| `batch` | All of `single` + batch uploads |
-| `admin` | All of `batch` + user management, full data access, image export |
+| `single` | Upload single images, view and correct own results |
+| `admin` | All of `single` + user management, full cross-user data access |
 
 ## Environment Variables
 

@@ -15,7 +15,6 @@ import {
   CrownOutlined,
   DeleteOutlined,
   UserOutlined,
-  TeamOutlined,
 } from "@ant-design/icons";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
@@ -25,7 +24,6 @@ const { Title } = Typography;
 // Role display configuration
 const roleConfig = {
   admin: { color: "gold", icon: <CrownOutlined />, label: "Admin" },
-  batch: { color: "blue", icon: <TeamOutlined />, label: "Batch" },
   single: { color: "default", icon: <UserOutlined />, label: "Single" },
 };
 
@@ -140,13 +138,12 @@ export default function UserManagement() {
               size="small"
               options={[
                 { value: "single", label: "Single" },
-                { value: "batch", label: "Batch" },
                 { value: "admin", label: "Admin" },
               ]}
             />
             <Popconfirm
               title="Delete this user?"
-              description="All batches and images owned by this user will be permanently deleted."
+              description="All images owned by this user will be permanently deleted."
               onConfirm={() => handleDelete(record.id)}
               okText="Delete"
               okType="danger"

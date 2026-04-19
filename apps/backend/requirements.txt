@@ -3,6 +3,7 @@ uvicorn[standard]==0.30.6
 sqlalchemy==2.0.35
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
+bcrypt<4.1  # passlib 1.7.4 不兼容 bcrypt 4.1+,4.1 起在 73 字节探测密码上抛 ValueError
 python-multipart==0.0.12
 pydantic[email]==2.9.2
 aiofiles==24.1.0
