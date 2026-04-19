@@ -44,35 +44,39 @@ An automated reading and classification system for **FeLV/FIV lateral flow assay
 
 ```
 FeLV-FIV-AI-website/
-├── LFAReader/                    # iOS native app
-│   ├── LFAReader.xcodeproj/
-│   └── LFAReader/
-│       ├── Views/                # SwiftUI views (15 files)
-│       ├── ViewModels/           # @Observable view models (6 files)
-│       ├── Models/               # Codable data models (6 files)
-│       ├── Services/             # APIClient, CameraService, ImageCache
-│       └── Resources/            # Assets, localization
+├── apps/
+│   ├── ios/                          # iOS native app (SwiftUI)
+│   │   ├── LFAReader.xcodeproj/
+│   │   └── LFAReader/
+│   │       ├── Views/                # SwiftUI views
+│   │       ├── ViewModels/           # @Observable view models
+│   │       ├── Models/               # Codable data models
+│   │       └── Services/             # APIClient, CameraService, ImageCache
+│   │
+│   ├── backend/                      # Python FastAPI backend
+│   │   ├── app/
+│   │   │   ├── main.py               # App entry point
+│   │   │   ├── models.py             # SQLAlchemy ORM models
+│   │   │   ├── schemas.py            # Pydantic schemas
+│   │   │   ├── auth.py               # JWT authentication
+│   │   │   ├── routers/              # API route handlers
+│   │   │   └── services/
+│   │   │       ├── cv_inference.py         # OpenCV band detection
+│   │   │       └── image_preprocessor.py   # Cassette detection & preprocessing
+│   │   └── requirements.txt
+│   │
+│   └── web/                          # React web app
+│       ├── src/
+│       │   ├── pages/                # React pages
+│       │   ├── components/           # Reusable components
+│       │   ├── context/              # AuthContext
+│       │   └── services/             # Axios API client
+│       ├── package.json
+│       └── vite.config.js
 │
-├── backend/                      # Python FastAPI backend
-│   ├── app/
-│   │   ├── main.py               # App entry point
-│   │   ├── models.py             # SQLAlchemy ORM models
-│   │   ├── schemas.py            # Pydantic schemas
-│   │   ├── auth.py               # JWT authentication
-│   │   ├── routers/              # API route handlers
-│   │   └── services/
-│   │       ├── cv_inference.py         # OpenCV band detection
-│   │       └── image_preprocessor.py   # Cassette detection & preprocessing
-│   └── requirements.txt
-│
-└── frontend/                     # React web app
-    ├── src/
-    │   ├── pages/                # React pages (8 files)
-    │   ├── components/           # Reusable components (5 files)
-    │   ├── context/              # AuthContext
-    │   └── services/             # Axios API client
-    ├── package.json
-    └── vite.config.js
+└── shared/                           # 跨端共享资源
+    └── data/
+        └── columbus_zips.json        # 邮编 GeoJSON,iOS 与 web 共用
 ```
 
 ## Getting Started
@@ -86,7 +90,7 @@ FeLV-FIV-AI-website/
 ### Backend
 
 ```bash
-cd backend
+cd apps/backend
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
@@ -104,7 +108,7 @@ uvicorn app.main:app --host 127.0.0.1 --port 8000
 ### Web Frontend
 
 ```bash
-cd frontend
+cd apps/web
 npm install
 npm run dev    # http://localhost:5173
 ```
@@ -113,10 +117,10 @@ npm run dev    # http://localhost:5173
 
 ```bash
 # Open in Xcode
-open LFAReader/LFAReader.xcodeproj
+open apps/ios/LFAReader.xcodeproj
 
 # Or build from command line
-xcodebuild -project LFAReader/LFAReader.xcodeproj -scheme LFAReader \
+xcodebuild -project apps/ios/LFAReader.xcodeproj -scheme LFAReader \
   -destination 'platform=iOS Simulator,name=iPhone 16' build
 ```
 

@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { MapContainer, TileLayer, GeoJSON } from "react-leaflet";
 import { Typography } from "antd";
 import "leaflet/dist/leaflet.css";
-import columbusGeo from "../data/columbus_zips.json";
+import columbusGeo from "@shared/data/columbus_zips.json";
 
 const { Text } = Typography;
 
