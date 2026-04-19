@@ -72,6 +72,10 @@ PROMINENCE_THRESHOLD = 0.8
 # analysis. Reduces high-frequency noise while preserving band peaks.
 COLUMN_SMOOTH_KERNEL = 11
 
+# Faint bands may only occupy part of the strip height, so a high-percentile
+# column profile preserves band signal better than a full-height mean.
+COLUMN_PROFILE_PERCENTILE = 80
+
 # When both L and I pass detection, verify it is a genuine dual-positive
 # rather than a single band spilling into the adjacent zone. The weaker
 # zone's prominence must be at least this fraction of the stronger zone's.
@@ -141,10 +145,10 @@ def detect_bands(strip_bgr: np.ndarray) -> dict:
     _, rw = a_channel.shape
     background_a = float(np.median(a_channel))
 
-    col_profile = np.mean(a_channel, axis=0)
+    col_profile = np.percentile(a_channel, COLUMN_PROFILE_PERCENTILE, axis=0)
     col_smooth = cv2.GaussianBlur(
         col_profile.reshape(1, -1),
-        (1, COLUMN_SMOOTH_KERNEL),
+        (COLUMN_SMOOTH_KERNEL, 1),
         0,
     ).flatten()
 

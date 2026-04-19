@@ -88,6 +88,7 @@ lfa-reader/
 ### 服务重启
 本机修改代码后,需要在 AWS 环境验证 Web 或 backend 时,先确认用户已把最新代码推送到 Git 远程仓库,再 SSH 到 AWS 主机 `/home/ubuntu/lfa-reader` 拉取并重启服务。在 AWS 主机仓库根目录执行:
 
+- 当前本机会话已配置可用 SSH 主机别名:`aws-mingshi`
 - 拉取代码:`git pull`
 - 后端:`kill $(pgrep -f "uvicorn app.main:app") 2>/dev/null; cd apps/backend && nohup venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 > uvicorn.log 2>&1 & disown`
 - 前端:`kill $(pgrep -f "vite") 2>/dev/null; cd apps/web && nohup npm run dev > vite.log 2>&1 & disown`
