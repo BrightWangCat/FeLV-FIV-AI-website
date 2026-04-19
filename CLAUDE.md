@@ -1,106 +1,69 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+本仓库为 LFA Reader 项目,围绕 FeLV/FIV 试纸图像识别提供后端、Web、iOS 三端。本文件指导所有 Claude Code 会话在本仓库内的行为。
 
-## Claude Code Behavioral Guidelines
-
-When working with this repository, Claude Code must adhere to the following principles:
-
-1. It is strictly forbidden to provide answers based solely on speculation; you must ask the user or search online for accurate information.
-
-2. You must not make decisions for the user without explicit instructions.
-   - 2.1. When the user requests modifications to a specific part, it is strictly forbidden to modify other parts without authorization.
-   - 2.2. In multi-turn conversations, any content previously confirmed by the user or content that the user has not objected to must be retained verbatim. You must not arbitrarily refine or change it based on your own inferences.
-   - 2.3. If the modifications made when fixing bugs conflict with the original design requirements, you need to confirm with the user.
-
-3. When the user requests the inclusion of case studies and literature, you must search online for the latest information; you must not use outdated knowledge bases.
-
-4. Requirements confirmation protocol:
-   - 4.1. It is strictly forbidden to generate any solutions before the requirements are confirmed.
-   - 4.2. After confirming the requirements, you must address the requirements step by step, section by section; providing a one-time solution is strictly forbidden.
-   - 4.3. You must not proceed to the next stage unless the user has explicitly stated that "This part is confirmed."
-
-5. Blind obedience is strictly forbidden; maintain professional integrity; flattery is strictly forbidden; maintain a serious and objective demeanor.
-
-6. Formatting: the use of emojis is strictly forbidden; minimize the use of dashes and parentheses. Do not include any mention of "Claude" in any code comments or documentation, and avoid any written evidence that the code was written by AI.
-
-7. Important code must include clear notes and comments explaining the logic and purpose.
-
-8. Use English to write code and对外公开文档 (如 README)。Use Chinese (excluding proper nouns) to answer the user and write internal docs (如 CLAUDE.md, tasks/, 注释外的解释文字)。
-
-## Project Layout
+## 项目结构
 
 ```
 lfa-reader/
 ├── apps/
-│   ├── backend/      # FastAPI + SQLAlchemy + OpenCV,Python 3.12
-│   ├── web/          # React 19 + Vite + Ant Design
-│   └── ios/          # SwiftUI,iOS 17+,Xcode 工程位于 apps/ios/LFAReader.xcodeproj
-├── shared/data/      # 跨端共享资源,web 通过 Vite alias @shared 引用
-└── tasks/            # 本地任务跟踪,不入库
+│   ├── backend/      FastAPI + SQLAlchemy + OpenCV,Python 3.12
+│   ├── web/          React 19 + Vite + Ant Design
+│   └── ios/          SwiftUI,iOS 17+,Xcode 工程位于 apps/ios/LFAReader.xcodeproj
+├── shared/data/      跨端共享资源,web 通过 Vite alias @shared 引用
+└── tasks/            本地任务跟踪,不入库
 ```
 
-入口文件: 后端 `apps/backend/app/main.py`,Web `apps/web/src/main.jsx`,iOS `apps/ios/LFAReader/LFAReaderApp.swift`。
+入口:后端 `apps/backend/app/main.py`,Web `apps/web/src/main.jsx`,iOS `apps/ios/LFAReader/LFAReaderApp.swift`。
 
-## Workflow Orchestration
+## 行为准则
 
-### Plan Mode
-- For any non-trivial task (3+ steps or architectural decisions), enter plan mode first.
-- Write detailed specs upfront to reduce ambiguity.
-- If execution deviates from the plan, stop immediately and re-plan. Do not force progress on a failing path.
-- Plan mode also applies to verification steps, not just building.
-- Plan mode does NOT override rule 4: plans must be confirmed by the user before execution.
+1. 不基于猜测回答。信息不足时主动询问用户或联网查证。
+2. 未经明确指示不替用户做决策。
+   - 2.1 用户要求修改 A 时,严禁顺手改 B。
+   - 2.2 多轮对话中用户已确认或未反对的内容必须逐字保留,不得自行精修。
+   - 2.3 修 bug 若与原设计冲突,先与用户确认再改。
+3. 引用案例与文献必须联网获取最新信息,严禁依赖陈旧知识库。
+4. 需求确认协议
+   - 4.1 需求未确认前严禁给方案。
+   - 4.2 确认后分阶段推进,严禁一次性甩完整方案。
+   - 4.3 用户未明确说"该部分确认"前不进入下一阶段。
+5. 保持专业客观,严禁盲从与奉承。
+6. 排版:严禁 emoji,避免破折号与括号;代码注释和文档不得提及 "Claude",不留 AI 撰写痕迹。
+7. 关键代码必须有清晰注释,说明逻辑与目的。
+8. 代码与对外文档(如 README)用英文,内部文档(CLAUDE.md、tasks/、解释性文字)用中文。专有名词保留原语言。
 
-### Self-Improvement Loop
-- After any correction from the user, append the pattern and prevention rule to `tasks/lessons.md`. 此文件本地保存,不入库,如不存在则创建。
-- Review `tasks/lessons.md` at session start if it exists.
-- Ruthlessly iterate on these lessons until the same mistake no longer recurs.
+## 工作流
 
-### Verification Before Done
-- Never mark a task complete without proving it works.
-- Run available checks, inspect logs, demonstrate correctness.
-- Ask yourself: "Would a senior engineer approve this?"
+### 计划与执行
+- 3 步以上或涉及架构决策的任务先出计划,写入 `tasks/todo.md`,使用复选框格式。
+- 用户确认前严禁执行;执行偏离计划立即停下重做计划。
+- 新任务开始前,把上一份 `tasks/todo.md` 重命名为 `tasks/todo-YYYYMMDD-<task-slug>.md` 归档。
 
-### Bug Investigation
-- When given a bug report, deeply investigate root cause first: read logs, trace errors, identify failing points.
-- Present findings and proposed fix to user for confirmation before modifying code (per rule 2 and rule 4).
-- No temporary or hacky workarounds. Find and fix root causes.
+### 完成验证
+- 通过运行检查、查看日志、演示功能证明可用,再标记完成。
+- 自问:资深工程师是否会签字通过?
 
-### Demand Elegance (Balanced)
-- For non-trivial changes, pause and consider if there is a more elegant approach.
-- If a fix feels hacky, reconsider and propose the cleaner solution.
-- Skip this for simple, obvious fixes. Do not over-engineer.
+### 改动哲学
+- 简单优先:每次改动尽可能小,只触动必要部分。
+- 不糊弄:找根因,严禁临时绕过和 hack。简单明显的修复不必过度设计。
+- 用户每次纠正后,把模式与预防规则追加到 `tasks/lessons.md`(本地保存,不入库,不存在则创建);会话开始若文件存在则先阅读。
 
-## Task Management
+## 开发约定
 
-1. **Plan First**: 计划写入 `tasks/todo.md`,使用复选框格式。新任务开始前,把上一个任务的 `todo.md` 重命名为 `todo-YYYYMMDD-<task-slug>.md` 归档。
-2. **Verify Plan**: Check in with user before starting implementation (per rule 4).
-3. **Track Progress**: Mark items complete as you go.
-4. **Explain Changes**: Provide high-level summary at each step.
-5. **Document Results**: Add review section to `tasks/todo.md` upon completion.
-6. **Capture Lessons**: Update `tasks/lessons.md` after any correction from user.
+### 服务重启
+修改后端 Python 代码(router、service、model 等)后立即重启后端;修改前端代码后重启前端 dev server(若运行中)。在仓库根目录执行:
 
-Note: `tasks/todo.md` and `tasks/lessons.md` are project-level tracking files. Create them if they do not exist.
+- 后端:`kill $(pgrep -f "uvicorn app.main:app") 2>/dev/null; cd apps/backend && nohup venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 > uvicorn.log 2>&1 & disown`
+- 前端:`kill $(pgrep -f "vite") 2>/dev/null; cd apps/web && nohup npm run dev > vite.log 2>&1 & disown`
+- 查进程:`ps aux | grep -E "uvicorn|vite" | grep -v grep`
 
-### Service Restart After Code Changes
-- After modifying backend Python code (routers, services, models, etc.), automatically restart the backend server so changes take effect immediately.
-- After modifying frontend code, restart the frontend dev server if it is running.
-- 后端重启,在仓库根目录执行: `kill $(pgrep -f "uvicorn app.main:app") 2>/dev/null; cd apps/backend && nohup venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 > uvicorn.log 2>&1 & disown`
-- 前端重启,在仓库根目录执行: `kill $(pgrep -f "vite") 2>/dev/null; cd apps/web && nohup npm run dev > vite.log 2>&1 & disown`
-- 查看运行中的进程: `ps aux | grep -E "uvicorn|vite" | grep -v grep`
+### iOS 端
+- 主开发环境为 Linux 无 Xcode,iOS 端无法编译运行。
+- iOS Swift 代码改动只能做静态检查,语法与类型推断需用户在 macOS 端验证。
+- Xcode 工程文件 `apps/ios/LFAReader.xcodeproj/project.pbxproj` 的资源引用、Build Phase、Target 配置必须在 Xcode GUI 中改,严禁手工编辑 pbxproj。
 
-### iOS 端注意事项
-- 当前主开发环境为 Linux,无 Xcode,无法编译或运行 iOS 端
-- 修改 iOS Swift 代码后只能做静态检查,语法和类型推断需用户在 macOS 端验证
-- 涉及 Xcode 工程文件 `apps/ios/LFAReader.xcodeproj/project.pbxproj` 的资源引用、Build Phase、Target 配置变更,必须在 Xcode GUI 中完成,不要手工编辑 pbxproj
-
-### Git Commit Discipline
-- After completing a major feature update, create a git commit immediately.
-- Before committing, verify that .gitignore properly excludes sensitive data (database files, .env, uploads, credentials). Never commit these files.
-- Write concise, meaningful commit messages describing the feature change.
-
-## Core Principles
-
-- **Simplicity First**: Make every change as simple as possible. Impact minimal code.
-- **No Laziness**: Find root causes. No temporary fixes. Senior developer standards.
-- **Minimal Impact**: Changes should only touch what is necessary. Avoid introducing bugs.
+### Git 提交
+- 完成主要功能后立即提交。
+- 提交前确认 `.gitignore` 已排除敏感文件:数据库、.env、上传目录、凭证。
+- commit message 简洁,聚焦"为什么"。
