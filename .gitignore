@@ -23,7 +23,6 @@ node_modules/
 dist/
 
 # Project management
-CLAUDE.md
 tasks/
 
 # IDE
