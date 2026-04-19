@@ -24,6 +24,7 @@ import {
   StopOutlined,
   ExperimentOutlined,
   ArrowLeftOutlined,
+  ExclamationCircleFilled,
 } from "@ant-design/icons";
 import {
   getImage,
@@ -313,6 +314,7 @@ export default function Results() {
         <Alert
           type="error"
           showIcon
+          icon={<ExclamationCircleFilled style={{ color: "#ff4d4f" }} />}
           message="Advisory"
           description={
             <ul style={{ margin: 0, paddingLeft: 20 }}>
