@@ -1,6 +1,6 @@
-# CLAUDE.md
+# AGENTS.md
 
-本仓库为 LFA Reader 项目,围绕 FeLV/FIV 试纸图像识别提供后端、Web、iOS 三端。本文件指导所有 Claude Code 会话在本仓库内的行为。
+本仓库为 LFA Reader 项目,围绕 FeLV/FIV 试纸图像识别提供后端、Web、iOS 三端。本文件指导所有 Codex 会话在本仓库内的行为。
 
 ## 项目结构
 
@@ -58,9 +58,9 @@ lfa-reader/
    - 4.2 确认后分阶段推进,严禁一次性甩完整方案。
    - 4.3 用户未明确说"该部分确认"前不进入下一阶段。
 5. 保持专业客观,严禁盲从与奉承。
-6. 排版:严禁 emoji,避免破折号与括号;代码注释和文档不得提及 "Claude",不留 AI 撰写痕迹。
+6. 排版:严禁 emoji,避免破折号与括号;代码注释和文档不得提及 "Codex",不留 AI 撰写痕迹。
 7. 关键代码必须有清晰注释,说明逻辑与目的。
-8. 代码与对外文档(如 README)用英文,内部文档(CLAUDE.md、tasks/、解释性文字)用中文。专有名词保留原语言。
+8. 代码与对外文档(如 README)用英文,内部文档(AGENTS.md、tasks/、解释性文字)用中文。专有名词保留原语言。
 
 ## 工作流
 
@@ -94,7 +94,6 @@ lfa-reader/
 - 严禁手工编辑 `apps/ios/LFAReader.xcodeproj/project.pbxproj` 的资源引用、Build Phase、Target 配置;此类改动必须在 Xcode GUI 完成。
 
 ### Git 提交
-- **严禁 Claude 执行任何 git 提交动作**。`git add`、`git commit`、`git commit --amend`、`git push`、`git push --force`、tag、PR、release、deploy、issue 更新、外部通知等一律由用户亲自完成。
-- Claude 完成代码改动后只汇报改了什么、为什么、涉及哪些文件,用户自行决定是否提交及如何撰写 commit message。
-- 用户如显式要求 Claude 代为 commit,当次按用户指令执行,但不得因此放宽本条默认规则。
-- 维护 `.gitignore` 仍是 Claude 的职责:新增敏感文件(数据库、.env、上传目录、凭证)时及时补齐忽略规则,提醒用户提交前复核。
+- 完成主要功能后立即 `git add` 并 `git commit`,commit message 由 Codex 撰写,简洁聚焦"为什么"。
+- **严禁自己执行 `git push` / `git push --force`**。推送到远程一律由用户亲自完成。
+- 提交前确认 `.gitignore` 已排除敏感文件:数据库、.env、上传目录、凭证。
