@@ -435,7 +435,7 @@ export default function Results() {
             <Button block icon={<EditOutlined />} onClick={startEdit}>
               {image.manual_correction ? "Edit Correction" : "Manual Correct"}
             </Button>
-            {image.cv_result && image.cv_result !== image.manual_correction && (
+            {image.cv_result && !image.manual_correction && (
               <Button
                 block
                 icon={<CheckOutlined />}
