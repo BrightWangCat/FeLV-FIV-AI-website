@@ -206,7 +206,7 @@ export default function UploadPage() {
         items={[
           { title: "Image" },
           { title: "Patient Info" },
-          { title: "GPS & Submit" },
+          { title: "Submit" },
         ]}
         style={{ marginBottom: 32 }}
       />
@@ -396,19 +396,20 @@ export default function UploadPage() {
         </>
       )}
 
-      {/* Step 3: GPS Consent (placeholder) + Submit */}
+      {/* Step 3: Submit */}
       {step === 2 && (
         <>
           <Title level={5} style={{ color: "#1a365d", marginBottom: 16 }}>
-            Would you like to share your GPS location?
+            Ready to submit?
           </Title>
 
-          <Alert
-            type="info"
-            message="This feature is coming soon."
-            showIcon
-            style={{ marginBottom: 24 }}
-          />
+          <Text
+            type="secondary"
+            style={{ display: "block", marginBottom: 24, lineHeight: 1.6 }}
+          >
+            The uploaded image will be submitted with the patient information
+            you entered, including the manual Area Code when provided.
+          </Text>
 
           {uploading && (
             <Progress
